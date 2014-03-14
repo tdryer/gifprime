@@ -55,7 +55,7 @@ gif = construct.Struct(
             construct.Flag('lct_flag'),
             construct.Flag('interlace_flag'),
             construct.Flag('sort_flag'),
-            construct.Padding(2), # reserved
+            construct.Padding(2),  # reserved
             construct.macros.BitField('lct_size', 3),
         ),
     ),

@@ -22,7 +22,7 @@ class GIF(object):
         self.comments = []
         self.filename = filename
 
-        if filename != None:
+        if filename is not None:
             with open(filename, 'rb') as f:
                 data_stream = f.read()
             parsed_data = gifprime.parser.gif.parse(data_stream)
