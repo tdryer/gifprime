@@ -21,12 +21,17 @@ class GIF(object):
         self.images = []
         self.comments = []
         self.filename = filename
+        self.size = (0, 0)
 
         if filename is not None:
             with open(filename, 'rb') as f:
                 data_stream = f.read()
             parsed_data = gifprime.parser.gif.parse(data_stream)
             self.comments = [parsed_data.comment_extension.comment]
+            self.size = (
+                parsed_data.logical_screen_descriptor.logical_width,
+                parsed_data.logical_screen_descriptor.logical_height,
+            )
             #print parsed_data
             #assert False
 
