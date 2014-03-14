@@ -1,4 +1,8 @@
-"""Construct-based parser for the GIF89a file format."""
+"""Construct-based parser for the GIF89a file format.
+
+Based on specification:
+http://www.w3.org/Graphics/GIF/spec-gif89a.txt
+"""
 
 
 import construct
@@ -20,13 +24,16 @@ gif = construct.Struct(
         construct.ULInt8('bg_col_index'),
         construct.ULInt8('pixel_aspect'),
     ),
-    construct.Struct(
-        'gct',
-        construct.Array(
-            lambda ctx: pow(2, ctx._.logical_screen_descriptor.gct_size + 1),
+    construct.If(
+        lambda ctx: ctx.logical_screen_descriptor.gct_flag,
+        construct.Struct(
+            'gct',
             construct.Array(
-                3,
-                construct.ULInt8('colour_component'),
+                lambda ctx: pow(2, ctx._.logical_screen_descriptor.gct_size + 1),
+                construct.Array(
+                    3,
+                    construct.ULInt8('colour_component'),
+                ),
             ),
         ),
     ),
@@ -57,6 +64,19 @@ gif = construct.Struct(
             construct.Flag('sort_flag'),
             construct.Padding(2),  # reserved
             construct.macros.BitField('lct_size', 3),
+        ),
+    ),
+    construct.If(
+        lambda ctx: ctx.image_descriptor.lct_flag,
+        construct.Struct(
+            'lct',
+            construct.Array(
+                lambda ctx: pow(2, ctx._.image_descriptor.lct_size + 1),
+                construct.Array(
+                    3,
+                    construct.ULInt8('colour_component'),
+                ),
+            ),
         ),
     ),
     construct.Struct(
