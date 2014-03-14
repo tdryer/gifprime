@@ -39,8 +39,14 @@ gif = construct.Struct(
     ),
     construct.Struct(
         'comment_extension',
-        construct.ULInt8('ext_intro'),
-        construct.ULInt8('comm_label'),
+        construct.Const(
+            construct.ULInt8('ext_intro'),
+            0x21,
+        ),
+        construct.Const(
+            construct.ULInt8('comm_label'),
+            0xFE,
+        ),
         construct.ULInt8('comm_size'),
         construct.String(
             'comment',
