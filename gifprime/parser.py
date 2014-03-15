@@ -1,7 +1,8 @@
-"""Construct-based parser for the GIF89a file format.
+"""Construct-based parser for the GIF file format.
 
-Based on specification:
+Based on specifications:
 http://www.w3.org/Graphics/GIF/spec-gif89a.txt
+http://www.w3.org/Graphics/GIF/spec-gif87.txt
 """
 
 
