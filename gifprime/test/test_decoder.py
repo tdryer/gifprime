@@ -9,6 +9,14 @@ def test_whitepixel():
     assert gif.size == (1, 1)
 
 
+def test_whitepixel_87a():
+    filename = 'gifprime/test/data/whitepixel_87a.gif'
+    gif = GIF(filename)
+    assert gif.filename == filename
+    assert gif.comments == []
+    assert gif.size == (1, 1)
+
+
 def test_8x8gradient():
     filename = 'gifprime/test/data/8x8gradient.gif'
     gif = GIF(filename)

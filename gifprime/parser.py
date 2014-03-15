@@ -24,7 +24,11 @@ _data_subblocks = construct.Struct(
 
 gif = construct.Struct(
     'GIF',
-    construct.Magic('GIF89a'),
+    construct.Select(
+        'magic',
+        construct.Magic('GIF89a'),
+        construct.Magic('GIF87a'),
+    ),
     construct.Struct(
         'logical_screen_descriptor',
         construct.ULInt16('logical_width'),
