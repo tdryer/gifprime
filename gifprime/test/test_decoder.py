@@ -15,3 +15,11 @@ def test_8x8gradient():
     assert gif.filename == filename
     assert gif.comments == ["Created with GIMP"]
     assert gif.size == (8, 8)
+
+
+def test_8x8gradientanim():
+    filename = 'gifprime/test/data/8x8gradientanim.gif'
+    gif = GIF(filename)
+    assert gif.filename == filename
+    assert gif.comments == ["Created with GIMP"]
+    assert gif.size == (8, 8)

@@ -27,13 +27,12 @@ class GIF(object):
             with open(filename, 'rb') as f:
                 data_stream = f.read()
             parsed_data = gifprime.parser.gif.parse(data_stream)
-            self.comments = [parsed_data.comment_extension.comment]
+            self.comments = [block.comment for block in parsed_data.body
+                             if 'comment' in block]
             self.size = (
                 parsed_data.logical_screen_descriptor.logical_width,
                 parsed_data.logical_screen_descriptor.logical_height,
             )
-            #print parsed_data
-            #assert False
 
     def save(self, filename):
         """Encode a GIF and save it to a file."""
