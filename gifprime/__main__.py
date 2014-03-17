@@ -4,8 +4,8 @@ import gifprime.parser
 class Image(object):
     """A single image from a GIF."""
 
-    def __init__(self):
-        self.image_data = None
+    def __init__(self, image_data):
+        self.image_data = image_data
         self.user_input_flag = False
         self.delay_time = 0
         # TODO: likely we can abstract these away:
@@ -32,13 +32,16 @@ class GIF(object):
                 parsed_data.logical_screen_descriptor.logical_height,
             )
 
+            # XXX: LOL!
+            height, width = self.size[::-1]
+
             for block in parsed_data.body:
-                if 'block_type' not in block: # it's an image
-                    #print block
-                    #assert False
-                    self.images.append(None)
-                    pixels = block.pixels
-                    # TODO
+                if 'block_type' not in block:  # it's an image
+                    # TODO: Map index to RGB value.
+                    image_data = [[block.pixels[(i * width) + j]
+                                  for j in xrange(width)]
+                                  for i in xrange(height)]
+                    self.images.append(Image(image_data))
                 elif block.block_type == 'comment':
                     self.comments.append(block.comment)
                 elif block.block_type == 'application':
