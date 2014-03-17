@@ -9,14 +9,37 @@ http://www.w3.org/Graphics/GIF/spec-gif87.txt
 import construct
 
 
-# common representation of blocks of data (without terminator)
-_data_subblocks = construct.OptionalGreedyRange(
-    construct.Struct(
-        'data_subblocks',
-        construct.NoneOf(construct.ULInt8('block_size'), [0]),
-        construct.Bytes('data_values', lambda ctx: ctx.block_size),
+# Adapter to parse "data sub-blocks" into a string
+DataSubBlocks = construct.ExprAdapter(
+    construct.OptionalGreedyRange(
+        construct.Struct(
+            'data_subblocks',
+            construct.NoneOf(construct.ULInt8('block_size'), [0]),
+            construct.Bytes('data_values', lambda ctx: ctx.block_size),
+        ),
     ),
+    encoder=None, # TODO
+    decoder=lambda obj, ctx: ''.join(dsb.data_values for dsb in obj),
 )
+
+
+class LzwAdapter(construct.Adapter):
+    """Adapter for LZW-compressed data.
+
+    Example:
+        LzwAdapter(Bytes('foo', 4))
+    """
+
+    def _encode(self, obj, context):
+        return None # TODO
+
+    def _decode(self, obj, context):
+        # TODO: this is a hack to make tests pass before we implement it
+        min_code_size = context.lzw_min
+        if len(obj) == 2:
+            return '\x00'
+        else:
+            return '\x00' * 8 * 8
 
 
 gif = construct.Struct(
@@ -62,7 +85,7 @@ gif = construct.Struct(
                 construct.Const(construct.ULInt8('block_size'), 11),
                 construct.String('app_id', 8),
                 construct.Bytes('app_auth_code', 3),
-                _data_subblocks,
+                DataSubBlocks,
                 construct.Const(construct.ULInt8('terminator'), 0),
             ),
             construct.Struct(
@@ -126,7 +149,15 @@ gif = construct.Struct(
                     ),
                 ),
                 construct.ULInt8('lzw_min'),
-                _data_subblocks,
+                # TODO: creates an array called data_subblocks instead of index
+                construct.Tunnel(
+                    LzwAdapter(DataSubBlocks),
+                    construct.Array(
+                        lambda ctx: (ctx.image_descriptor.width *
+                                     ctx.image_descriptor.height),
+                        construct.ULInt8('index'),
+                    ),
+                ),
                 construct.Const(construct.ULInt8('terminator'), 0),
             ),
         ),

@@ -1,10 +1,6 @@
 import gifprime.parser
 
 
-def decompress_lzw(data):
-    return None # TODO
-
-
 class Image(object):
     """A single image from a GIF."""
 
@@ -39,18 +35,13 @@ class GIF(object):
             for block in parsed_data.body:
                 if block.block_type == 'image':
                     self.images.append(None)
-                    lzw_data = ''.join(dsb.data_values for dsb
-                                       in block.data_subblocks)
-                    # TODO Might want to make this a Construct adapter so we
-                    # can also parse the decompressed data.
-                    image_data = decompress_lzw(lzw_data)
+                    pixels = block.data_subblocks
+                    # TODO
                 elif block.block_type == 'comment_extension':
                     self.comments.append(block.comment)
                 elif block.block_type == 'application_extension':
-                    data = ''.join(dsb.data_values for dsb
-                                   in block.data_subblocks)
                     print ("Found app extension for '{}' containing '{}'"
-                           .format(block.app_id, data))
+                           .format(block.app_id, block.data_subblocks))
 
     def save(self, filename):
         """Encode a GIF and save it to a file."""
