@@ -34,14 +34,16 @@ class GIF(object):
 
             for block in parsed_data.body:
                 if block.block_type == 'image':
+                    #print block
+                    #assert False
                     self.images.append(None)
-                    pixels = block.data_subblocks
+                    pixels = block.pixels
                     # TODO
                 elif block.block_type == 'comment_extension':
                     self.comments.append(block.comment)
                 elif block.block_type == 'application_extension':
                     print ("Found app extension for '{}' containing '{}'"
-                           .format(block.app_id, block.data_subblocks))
+                           .format(block.app_id, block.app_data))
 
     def save(self, filename):
         """Encode a GIF and save it to a file."""

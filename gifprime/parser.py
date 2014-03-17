@@ -9,18 +9,19 @@ http://www.w3.org/Graphics/GIF/spec-gif87.txt
 import construct
 
 
-# Adapter to parse "data sub-blocks" into a string
-DataSubBlocks = construct.ExprAdapter(
-    construct.OptionalGreedyRange(
-        construct.Struct(
-            'data_subblocks',
-            construct.NoneOf(construct.ULInt8('block_size'), [0]),
-            construct.Bytes('data_values', lambda ctx: ctx.block_size),
+def DataSubBlocks(name):
+    """Return Adapter to parse GIF data sub-blocks."""
+    return construct.ExprAdapter(
+        construct.OptionalGreedyRange(
+            construct.Struct(
+                name,
+                construct.NoneOf(construct.ULInt8('block_size'), [0]),
+                construct.Bytes('data_values', lambda ctx: ctx.block_size),
+            ),
         ),
-    ),
-    encoder=None, # TODO
-    decoder=lambda obj, ctx: ''.join(dsb.data_values for dsb in obj),
-)
+        encoder=None, # TODO implement encoder
+        decoder=lambda obj, ctx: ''.join(dsb.data_values for dsb in obj),
+    )
 
 
 class LzwAdapter(construct.Adapter):
@@ -31,10 +32,11 @@ class LzwAdapter(construct.Adapter):
     """
 
     def _encode(self, obj, context):
-        return None # TODO
+        return None # TODO implement encoder
 
     def _decode(self, obj, context):
-        # TODO: this is a hack to make tests pass before we implement it
+        # TODO implement decoder
+        # XXX: this is a hack to make tests pass before we implement it
         min_code_size = context.lzw_min
         if len(obj) == 2:
             return '\x00'
@@ -85,7 +87,7 @@ gif = construct.Struct(
                 construct.Const(construct.ULInt8('block_size'), 11),
                 construct.String('app_id', 8),
                 construct.Bytes('app_auth_code', 3),
-                DataSubBlocks,
+                DataSubBlocks('app_data'),
                 construct.Const(construct.ULInt8('terminator'), 0),
             ),
             construct.Struct(
@@ -151,7 +153,7 @@ gif = construct.Struct(
                 construct.ULInt8('lzw_min'),
                 # TODO: creates an array called data_subblocks instead of index
                 construct.Tunnel(
-                    LzwAdapter(DataSubBlocks),
+                    LzwAdapter(DataSubBlocks('pixels')),
                     construct.Array(
                         lambda ctx: (ctx.image_descriptor.width *
                                      ctx.image_descriptor.height),
