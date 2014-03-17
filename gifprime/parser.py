@@ -12,15 +12,19 @@ import construct
 def DataSubBlocks(name):
     """Return Adapter to parse GIF data sub-blocks."""
     return construct.ExprAdapter(
-        construct.OptionalGreedyRange(
-            construct.Struct(
-                name,
-                construct.NoneOf(construct.ULInt8('block_size'), [0]),
-                construct.Bytes('data_values', lambda ctx: ctx.block_size),
+        construct.Struct(
+            name,
+            construct.OptionalGreedyRange(
+                construct.Struct(
+                    'blocks',
+                    construct.NoneOf(construct.ULInt8('block_size'), [0]),
+                    construct.Bytes('data_values', lambda ctx: ctx.block_size),
+                ),
             ),
+            construct.Const(construct.ULInt8('terminator'), 0)
         ),
         encoder=None, # TODO implement encoder
-        decoder=lambda obj, ctx: ''.join(dsb.data_values for dsb in obj),
+        decoder=lambda obj, ctx: ''.join(dsb.data_values for dsb in obj.blocks),
     )
 
 
@@ -88,7 +92,6 @@ gif = construct.Struct(
                 construct.String('app_id', 8),
                 construct.Bytes('app_auth_code', 3),
                 DataSubBlocks('app_data'),
-                construct.Const(construct.ULInt8('terminator'), 0),
             ),
             construct.Struct(
                 'comment_extension',
@@ -96,7 +99,6 @@ gif = construct.Struct(
                 construct.Const(construct.ULInt8('ext_intro'), 0x21),
                 construct.Const(construct.ULInt8('comm_label'), 0xFE),
                 DataSubBlocks('comment'),
-                construct.Const(construct.ULInt8('terminator'), 0)
             ),
             construct.Struct(
                 'image',
@@ -159,7 +161,6 @@ gif = construct.Struct(
                         construct.ULInt8('index'),
                     ),
                 ),
-                construct.Const(construct.ULInt8('terminator'), 0),
             ),
         ),
     ),
