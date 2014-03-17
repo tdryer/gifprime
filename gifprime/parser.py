@@ -95,8 +95,7 @@ gif = construct.Struct(
                 construct.Value('block_type', lambda ctx: 'comment_extension'),
                 construct.Const(construct.ULInt8('ext_intro'), 0x21),
                 construct.Const(construct.ULInt8('comm_label'), 0xFE),
-                construct.ULInt8('comm_size'),
-                construct.String('comment', lambda ctx: ctx.comm_size),
+                DataSubBlocks('comment'),
                 construct.Const(construct.ULInt8('terminator'), 0)
             ),
             construct.Struct(
