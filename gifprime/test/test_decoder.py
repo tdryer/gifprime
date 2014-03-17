@@ -7,6 +7,7 @@ def test_whitepixel():
     assert gif.filename == filename
     assert gif.comments == ["Created with GIMP"]
     assert gif.size == (1, 1)
+    assert len(gif.images) == 1
 
 
 def test_whitepixel_87a():
@@ -15,6 +16,7 @@ def test_whitepixel_87a():
     assert gif.filename == filename
     assert gif.comments == []
     assert gif.size == (1, 1)
+    assert len(gif.images) == 1
 
 
 def test_8x8gradient():
@@ -23,6 +25,7 @@ def test_8x8gradient():
     assert gif.filename == filename
     assert gif.comments == ["Created with GIMP"]
     assert gif.size == (8, 8)
+    assert len(gif.images) == 1
 
 
 def test_8x8gradientanim():
@@ -31,3 +34,4 @@ def test_8x8gradientanim():
     assert gif.filename == filename
     assert gif.comments == ["Created with GIMP"]
     assert gif.size == (8, 8)
+    assert len(gif.images) == 3
