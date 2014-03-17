@@ -8,6 +8,8 @@ http://www.w3.org/Graphics/GIF/spec-gif87.txt
 
 import construct
 
+import gifprime.lzw
+
 
 def BlockStart(name, label):
     """Return header for a block."""
@@ -51,13 +53,7 @@ class LzwAdapter(construct.Adapter):
         return None # TODO implement encoder
 
     def _decode(self, obj, context):
-        # TODO implement decoder
-        # XXX: this is a hack to make tests pass before we implement it
-        min_code_size = context.lzw_min
-        if len(obj) == 2:
-            return '\x00'
-        else:
-            return '\x00' * 8 * 8
+        return ''.join(gifprime.lzw.decompress(obj, context.lzw_min))
 
 
 gif = construct.Struct(
