@@ -9,6 +9,18 @@ http://www.w3.org/Graphics/GIF/spec-gif87.txt
 import construct
 
 
+def BlockStart(name, label):
+    """Return header for a block."""
+    return construct.Embedded(
+        construct.Struct(
+            'block_header',
+            construct.Value('block_type', lambda ctx: name),
+            construct.Const(construct.ULInt8('ext_intro'), 0x21),
+            construct.Const(construct.ULInt8('ext_label'), label),
+        ),
+    )
+
+
 def DataSubBlocks(name):
     """Return Adapter to parse GIF data sub-blocks."""
     return construct.ExprAdapter(
@@ -84,10 +96,7 @@ gif = construct.Struct(
             'body',
             construct.Struct(
                 'application_extension',
-                construct.Value('block_type',
-                                lambda ctx: 'application_extension'),
-                construct.Const(construct.ULInt8('ext_intro'), 0x21),
-                construct.Const(construct.ULInt8('comm_label'), 0xFF),
+                BlockStart('application', 0xFF),
                 construct.Const(construct.ULInt8('block_size'), 11),
                 construct.String('app_id', 8),
                 construct.Bytes('app_auth_code', 3),
@@ -95,19 +104,15 @@ gif = construct.Struct(
             ),
             construct.Struct(
                 'comment_extension',
-                construct.Value('block_type', lambda ctx: 'comment_extension'),
-                construct.Const(construct.ULInt8('ext_intro'), 0x21),
-                construct.Const(construct.ULInt8('comm_label'), 0xFE),
+                BlockStart('comment', 0xFE),
                 DataSubBlocks('comment'),
             ),
             construct.Struct(
                 'image',
-                construct.Value('block_type', lambda ctx: 'image'),
                 construct.Optional(
                     construct.Struct(
                         'gce',
-                        construct.Const(construct.ULInt8('ext_intro'), 0x21),
-                        construct.Const(construct.ULInt8('gce_label'), 0xF9),
+                        BlockStart('gce', 0xF9),
                         construct.Const(construct.ULInt8('block_size'), 4),
                         construct.EmbeddedBitStruct(
                             construct.Padding(3),  # reserved

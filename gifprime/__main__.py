@@ -33,15 +33,15 @@ class GIF(object):
             )
 
             for block in parsed_data.body:
-                if block.block_type == 'image':
+                if 'block_type' not in block: # it's an image
                     #print block
                     #assert False
                     self.images.append(None)
                     pixels = block.pixels
                     # TODO
-                elif block.block_type == 'comment_extension':
+                elif block.block_type == 'comment':
                     self.comments.append(block.comment)
-                elif block.block_type == 'application_extension':
+                elif block.block_type == 'application':
                     print ("Found app extension for '{}' containing '{}'"
                            .format(block.app_id, block.app_data))
 
