@@ -79,7 +79,7 @@ class CodeUnpacker(object):
 
 
 def compress(data, lzw_min):
-    """Compress a data stream using LZW."""
+    """Generate compressed data using LZW."""
     table = LZWCompressionTable(lzw_min)
 
     def _compress():
@@ -115,7 +115,7 @@ def compress(data, lzw_min):
 
 
 def decompress(data, lzw_min):
-    """Decompresses an LZW data stream."""
+    """Generate decompressed data using LZW."""
     table = LZWDecompressionTable(lzw_min)
     unpacker = CodeUnpacker(data)
 
