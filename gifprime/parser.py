@@ -53,13 +53,7 @@ class LzwAdapter(construct.Adapter):
         return ''.join(gifprime.lzw.compress(obj, context.lzw_min))
 
     def _decode(self, obj, context):
-        print 'lzw_min: {}'.format(context.lzw_min)
-        print 'decoding:'
-        print obj.__repr__()
-        res = ''.join(gifprime.lzw.decompress(obj, context.lzw_min))
-        print 'decoded:'
-        print res.__repr__()
-        return res
+        return ''.join(gifprime.lzw.decompress(obj, context.lzw_min))
 
 
 gif = construct.Struct(
