@@ -1,8 +1,10 @@
-"""Provides LZW decompression."""
+"""Provides LZW compression and decompression."""
 
 import math
 
 import bitstring
+
+__all__ = ['compress', 'decompress']
 
 
 class LZWDecompressionTable(object):
@@ -29,10 +31,14 @@ class LZWDecompressionTable(object):
     def __contains__(self, key):
         return key in self.codes
 
+    def show(self):
+        for key in sorted(self.codes):
+            print key, '|', repr(self.codes[key])
+
     @property
     def code_size(self):
         """Returns the # bits required to represent the largest code."""
-        return int(math.floor(math.log(self.next_code - 1, 2)) + 1)
+        return int(math.floor(math.log(self.next_code, 2)) + 1)
 
     def get(self, key):
         """Returns the code associated with key."""
@@ -50,13 +56,18 @@ class LZWCompressionTable(LZWDecompressionTable):
     def _make_codes(self, next_code):
         return {chr(i): i for i in xrange(next_code)}
 
+    @property
+    def code_size(self):
+        """Returns the # bits required to represent the largest code."""
+        return int(math.floor(math.log(self.next_code - 1, 2)) + 1)
+
     def add(self, key):
         """Maps key to the next largest code."""
         self.codes[key] = self.next_code
         self.next_code += 1
 
 
-class CodeUnpacker(object):
+class CodeStream(object):
     """Integer code unpacker for LZW compressed data."""
 
     def __init__(self, data):
@@ -117,35 +128,29 @@ def compress(data, lzw_min):
 def decompress(data, lzw_min):
     """Generate decompressed data using LZW."""
     table = LZWDecompressionTable(lzw_min)
-    unpacker = CodeUnpacker(data)
+    stream = CodeStream(data)
 
-    prev = None
+    # First thing we get should be a CLEAR code
+    assert stream.get(table.code_size) == table.clear_code
 
-    while not unpacker.empty():
-        code = unpacker.get(table.code_size)
+    prev = stream.get(table.code_size)
+    yield table.get(prev)
 
-        # CLEAR CODE
-        if code == table.clear_code:
+    while True:
+        code = stream.get(table.code_size)
+
+        if code == table.end_code:
+            break
+        elif code == table.clear_code:
             table.reinitialize()
             continue
-
-        # END OF INFORMATION CODE
-        if code == table.end_code:
-            # XXX: Should probably raise an exception if we get this and there
-            #      is still data left to parse.
-            continue
-
-        # Special case for getting the first non-CLEAR CODE
-        if prev is None:
-            prev = table.get(code)
-            yield prev
-            continue
-
-        # Usual case
-        if code in table:
+        elif stream.empty():
+            raise ValueError('Reached end of stream without END code')
+        elif code in table:
             yield table.get(code)
+            table.add(table.get(prev) + table.get(code)[0])
         else:
-            yield prev + table.get(code)[0]
+            yield table.get(prev) + table.get(prev)[0]
+            table.add(table.get(prev) + table.get(prev)[0])
 
-        table.add(prev + table.get(code)[0])
-        prev = table.get(code)
+        prev = code
