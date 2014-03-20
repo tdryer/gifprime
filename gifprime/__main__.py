@@ -21,6 +21,7 @@ class GIF(object):
         self.comments = []
         self.filename = filename
         self.size = (0, 0)
+        self.loop_animation = False # TODO: set via the netscape extension
 
         if filename is not None:
             with open(filename, 'rb') as f:
