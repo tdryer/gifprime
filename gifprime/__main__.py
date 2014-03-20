@@ -1,5 +1,7 @@
 import gifprime.parser
 
+from construct import Container
+
 
 class Image(object):
     """A single image from a GIF."""
@@ -77,6 +79,50 @@ class GIF(object):
                     print ("Found app extension for '{}' containing '{}'"
                            .format(block.app_id, block.app_data))
 
-    def save(self, filename):
+    def save(self, file_):
         """Encode a GIF and save it to a file."""
-        raise NotImplementedError
+        # TODO: all this does so far is create a 1x1 pixel white image
+        gif = gifprime.parser.gif.build(Container(
+            magic = 'GIF89a',
+            logical_screen_descriptor = Container(
+                logical_width = self.size[0],
+                logical_height = self.size[1],
+                gct_flag = True,
+                colour_res = 7,
+                sort_flag = True,
+                gct_size = 0,
+                bg_col_index = 0,
+                pixel_aspect = 0,
+            ),
+            gct = [
+                [255, 255, 255],
+                [0, 0, 0],
+            ],
+            body = [
+                Container(
+                    block_type = 'comment',
+                    ext_intro = 0x21,
+                    ext_label = 0xFE,
+                    comment = 'This is a test.'
+                ),
+                Container(
+                    gce = None,
+                    image_descriptor = Container(
+                        img_sep = 0x2C,
+                        left = 0,
+                        top = 0,
+                        width = self.size[0],
+                        height = self.size[1],
+                        lct_flag = False,
+                        interlace_flag = False,
+                        sort_flag = False,
+                        lct_size = 0,
+                    ),
+                    lct = None,
+                    lzw_min = 2,
+                    pixels = [0],
+                ),
+            ],
+            trailer = 0x3B,
+        ))
+        file_.write(gif)

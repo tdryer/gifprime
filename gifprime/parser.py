@@ -37,7 +37,17 @@ def DataSubBlocks(name):
             ),
             construct.Const(construct.ULInt8('terminator'), 0)
         ),
-        encoder=None, # TODO implement encoder
+        # from comment string, build Containers
+        encoder=lambda obj, ctx: construct.Container(
+            blocks = [
+                construct.Container(
+                    block_size = len(obj),
+                    data_values = obj,
+                ),
+            ],
+            terminator = 0,
+        ),
+        # from Containers, build comment string
         decoder=lambda obj, ctx: ''.join(dsb.data_values for dsb in obj.blocks),
     )
 

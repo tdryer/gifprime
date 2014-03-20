@@ -1,5 +1,6 @@
 import pytest
 import PIL.Image
+from StringIO import StringIO
 
 
 from gifprime.__main__ import GIF
@@ -50,3 +51,12 @@ def test_gif_decode(name):
 def test_get_gif_comment():
     gif = GIF(get_test_gif_path('whitepixel.gif'))
     assert gif.comments == ["Created with GIMP"]
+
+def test_save():
+    # TODO: more and better encoding tests
+    gif = GIF()
+    gif.size = (1, 1)
+    gif.images.append([(255, 255, 255, 255)])
+    file_ = StringIO()
+    gif.save(file_)
+    assert len(file_.getvalue()) > 0
