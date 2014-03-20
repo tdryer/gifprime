@@ -8,6 +8,7 @@ def test_whitepixel():
     assert gif.comments == ["Created with GIMP"]
     assert gif.size == (1, 1)
     assert len(gif.images) == 1
+    assert gif.images[0].rgba_data == [(255, 255, 255, 255)]
 
 
 def test_whitepixel_87a():
@@ -17,6 +18,7 @@ def test_whitepixel_87a():
     assert gif.comments == []
     assert gif.size == (1, 1)
     assert len(gif.images) == 1
+    assert gif.images[0].rgba_data == [(255, 255, 255, 255)]
 
 
 def test_8x8gradient():
@@ -26,6 +28,7 @@ def test_8x8gradient():
     assert gif.comments == ["Created with GIMP"]
     assert gif.size == (8, 8)
     assert len(gif.images) == 1
+    # TODO check image data
 
 
 def test_8x8gradientanim():
@@ -35,3 +38,4 @@ def test_8x8gradientanim():
     assert gif.comments == ["Created with GIMP"]
     assert gif.size == (8, 8)
     assert len(gif.images) == 3
+    # TODO check image data

@@ -4,13 +4,12 @@ import gifprime.parser
 class Image(object):
     """A single image from a GIF."""
 
-    def __init__(self, image_data):
-        self.image_data = image_data
+    def __init__(self, rgba_data, size):
+        self.size = size
+        self.rgba_data = rgba_data
+        # animation properties:
         self.user_input_flag = False
         self.delay_time = 0
-        # TODO: likely we can abstract these away:
-        self.transparent_colour = None
-        self.disposal_method = None
 
 
 class GIF(object):
@@ -32,16 +31,37 @@ class GIF(object):
                 parsed_data.logical_screen_descriptor.logical_height,
             )
 
-            # XXX: LOL!
-            height, width = self.size[::-1]
+            gct = (parsed_data.gct if
+                   parsed_data.logical_screen_descriptor.gct_flag else None)
 
             for block in parsed_data.body:
                 if 'block_type' not in block:  # it's an image
-                    # TODO: Map index to RGB value.
-                    image_data = [[block.pixels[(i * width) + j]
-                                  for j in xrange(width)]
-                                  for i in xrange(height)]
-                    self.images.append(Image(image_data))
+
+                    lct = (block.lct if block.image_descriptor.lct_flag
+                           else None)
+
+                    # Select the active colour table.
+                    if lct is not None:
+                        active_colour_table = lct
+                        assert False, 'TODO: test this'
+                    elif gct is not None:
+                        active_colour_table = gct
+                    else:
+                        raise NotImplementedError, (
+                            'TODO: supply a default colour table')
+
+                    # TODO handle different disposal methods
+                    # TODO handle transparency
+                    indexes = block.pixels
+                    rgba_data = [tuple(active_colour_table[i]) + (255,)
+                                 for i in indexes]
+                    image_size = (block.image_descriptor.width,
+                                  block.image_descriptor.height)
+                    assert self.size == image_size, (
+                        'TODO: allow image size smaller than gif size')
+
+                    self.images.append(Image(rgba_data, image_size))
+
                 elif block.block_type == 'comment':
                     self.comments.append(block.comment)
                 elif block.block_type == 'application':
