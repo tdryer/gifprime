@@ -41,9 +41,9 @@ def DataSubBlocks(name):
         encoder=lambda obj, ctx: construct.Container(
             blocks = [
                 construct.Container(
-                    block_size = len(obj),
-                    data_values = obj,
-                ),
+                    block_size = len(chunk),
+                    data_values = chunk,
+                ) for chunk in [obj[i:i+255] for i in xrange(0, len(obj), 255)]
             ],
             terminator = 0,
         ),
