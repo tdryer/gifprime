@@ -51,11 +51,19 @@ class GIF(object):
                         raise NotImplementedError, (
                             'TODO: supply a default colour table')
 
+                    # set transparency index
+                    if block.gce is not None:
+                        trans_index = block.gce.transparent_colour_index
+                    else:
+                        trans_index = None
+
                     # TODO handle different disposal methods
-                    # TODO handle transparency
                     indexes = block.pixels
-                    rgba_data = [tuple(active_colour_table[i]) + (255,)
-                                 for i in indexes]
+                    rgba_data = [
+                        tuple(active_colour_table[i]) +
+                        ((0,) if i == trans_index else (255,))
+                        for i in indexes
+                    ]
                     image_size = (block.image_descriptor.width,
                                   block.image_descriptor.height)
                     assert self.size == image_size, (
