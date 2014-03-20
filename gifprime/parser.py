@@ -78,13 +78,9 @@ gif = construct.Struct(
     ),
     construct.If(
         lambda ctx: ctx.logical_screen_descriptor.gct_flag,
-        construct.Struct(
-            'gct',
-            construct.Array(
-                lambda ctx: pow(2,
-                                ctx._.logical_screen_descriptor.gct_size + 1),
-                construct.Array(3, construct.ULInt8('colour_component')),
-            ),
+        construct.Array(
+            lambda ctx: pow(2, ctx.logical_screen_descriptor.gct_size + 1),
+            construct.Array(3, construct.ULInt8('gct')),
         ),
     ),
     construct.GreedyRange(
@@ -138,18 +134,9 @@ gif = construct.Struct(
                 ),
                 construct.If(
                     lambda ctx: ctx.image_descriptor.lct_flag,
-                    construct.Struct(
-                        'lct',
-                        construct.Array(
-                            lambda ctx: pow(
-                                2,
-                                ctx._.image_descriptor.lct_size + 1
-                            ),
-                            construct.Array(
-                                3,
-                                construct.ULInt8('colour_component'),
-                            ),
-                        ),
+                    construct.Array(
+                        lambda ctx: pow(2, ctx.image_descriptor.lct_size + 1),
+                        construct.Array(3, construct.ULInt8('lct')),
                     ),
                 ),
                 construct.ULInt8('lzw_min'),
