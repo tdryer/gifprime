@@ -1,6 +1,8 @@
-import gifprime.parser
-
 from construct import Container
+from math import log, ceil, pow
+
+
+import gifprime.parser
 
 
 class Image(object):
@@ -82,6 +84,15 @@ class GIF(object):
     def save(self, file_):
         """Encode a GIF and save it to a file."""
         # TODO: all this does so far is create a 1x1 pixel white image
+        colour_table = list(set([(r, g, b) for r, g, b, a in
+                                 self.images[0].rgba_data]))
+        assert len(colour_table) <= 256, 'TODO: colour quantization'
+
+        # pad colour table to nearest power of two length
+        # colour table length must also be at least 2
+        colour_table_len = max(2, int(pow(2, ceil(log(len(colour_table), 2)))))
+        colour_table += [(0, 0, 0)] * (colour_table_len - len(colour_table))
+
         gif = gifprime.parser.gif.build(Container(
             magic = 'GIF89a',
             logical_screen_descriptor = Container(
@@ -90,14 +101,11 @@ class GIF(object):
                 gct_flag = True,
                 colour_res = 7,
                 sort_flag = True,
-                gct_size = 0,
+                gct_size = int(log(len(colour_table), 2)) - 1,
                 bg_col_index = 0,
                 pixel_aspect = 0,
             ),
-            gct = [
-                [255, 255, 255],
-                [0, 0, 0],
-            ],
+            gct = colour_table,
             body = [
                 Container(
                     block_type = 'comment',
@@ -119,8 +127,9 @@ class GIF(object):
                         lct_size = 0,
                     ),
                     lct = None,
-                    lzw_min = 2,
-                    pixels = [0],
+                    lzw_min = max(2, int(log(len(colour_table), 2))),
+                    pixels = [colour_table.index((r, g, b)) for r, g, b, a
+                                                 in self.images[0].rgba_data]
                 ),
             ],
             trailer = 0x3B,
