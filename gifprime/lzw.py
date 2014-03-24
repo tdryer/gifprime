@@ -72,14 +72,15 @@ class CodeStream(object):
 
     def __init__(self, data):
         self.bits = bitstring.BitArray('0x' + data[::-1].encode('hex'))
+        self.end = len(self.bits)
 
     def get(self, size):
         """Returns the next integer code using size_of(num)-bits."""
-        code = self.bits[-size:].uint
-        del self.bits[-size:]
+        code = self.bits[self.end - size:self.end].uint
+        self.end -= size
 
         # If there aren't enough bits, then it's just padding.
-        if len(self.bits) < size:
+        if self.end < size:
             self.bits.clear()
 
         return code
