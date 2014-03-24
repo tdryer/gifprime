@@ -143,6 +143,8 @@ def decompress(data, lzw_min):
             break
         elif code == table.clear_code:
             table.reinitialize()
+            prev = stream.get(table.code_size)
+            yield table.get(prev)
             continue
         elif stream.empty():
             raise ValueError('Reached end of stream without END code')
