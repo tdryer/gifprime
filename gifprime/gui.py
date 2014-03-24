@@ -1,5 +1,8 @@
-from sys import exit
+import sys
+
 import pygame
+
+from gifprime.__main__ import GIF
 
 pygame.init()
 
@@ -11,12 +14,21 @@ class GIFViewer(object):
         self.screen = pygame.display.set_mode((width, height))
         self.clock = pygame.time.Clock()
 
+        self.gif = GIF(sys.argv[1])
+
+        image_str = ''.join(''.join(chr(c) for c in pixel)
+                            for pixel in self.gif.images[0].rgba_data)
+        self.surface = pygame.image.fromstring(image_str,
+                                               self.gif.size,
+                                               'RGBA')
+
     def __do_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                exit(0)
+                sys.exit(0)
 
     def __do_draw(self, elapsed):
+        self.screen.blit(self.surface, (0, 0))
         pygame.display.flip()
 
     def main(self):
