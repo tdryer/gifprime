@@ -36,6 +36,7 @@ def load_test_gif(fp):
     '8x8gradient.gif',
     '8x8gradientanim.gif',
     'transparentcircle.gif',
+    'steam.gif',
 ])
 def test_gif_decode(name):
     ref = load_test_gif(get_test_gif_path(name))
