@@ -132,7 +132,8 @@ def decompress(data, lzw_min):
     stream = CodeStream(data)
 
     # First thing we get should be a CLEAR code
-    assert stream.get(table.code_size) == table.clear_code
+    first_code = stream.get(table.code_size)
+    assert first_code == table.clear_code
 
     prev = stream.get(table.code_size)
     yield table.get(prev)
