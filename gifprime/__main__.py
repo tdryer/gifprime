@@ -5,6 +5,29 @@ from math import log, ceil, pow
 import gifprime.parser
 
 
+def blit_rgba(source, source_size, pos, dest, dest_size):
+    """Blit source onto dest and return the result.
+
+    source and dest are lists of RGBA tuples.
+    """
+    # optimize the trivial case
+    if pos == (0, 0) and source_size == dest_size:
+        return source
+    window_x = (pos[0], pos[0] + source_size[0])
+    window_y = (pos[1], pos[1] + source_size[1])
+    res = []
+    for y in xrange(dest_size[1]):
+        for x in xrange(dest_size[0]):
+            source_x = x - pos[0]
+            source_y = y - pos[1]
+            if source_x >= 0 and source_x < source_size[0] and \
+                    source_y >= 0 and source_y < source_size[1]:
+                res.append(source[source_y * source_size[0] + source_x])
+            else:
+                res.append(dest[y * dest_size[0] + x])
+    return res
+
+
 class Image(object):
     """A single image from a GIF."""
 
@@ -33,15 +56,22 @@ class GIF(object):
             with open(filename, 'rb') as f:
                 data_stream = f.read()
             parsed_data = gifprime.parser.gif.parse(data_stream)
-            self.size = (
-                parsed_data.logical_screen_descriptor.logical_width,
-                parsed_data.logical_screen_descriptor.logical_height,
-            )
+            lsd = parsed_data.logical_screen_descriptor
+            self.size = (lsd.logical_width, lsd.logical_height)
 
-            gct = (parsed_data.gct if
-                   parsed_data.logical_screen_descriptor.gct_flag else None)
+            if lsd.gct_flag:
+                gct = parsed_data.gct
+                bg_colour = tuple(gct[lsd.bg_col_index]) + (255,)
+            else:
+                gct = None
+                # XXX: this spec is not clear on what this should be
+                bg_colour = (0, 0, 0, 255)
+
             # the most recent GCE block since the last image block.
             active_gce = None
+
+            # initialize the previous state
+            prev_state = [bg_colour] * (self.size[0] * self.size[1])
 
             for block in parsed_data.body:
                 if 'block_type' not in block:  # it's an image
@@ -52,7 +82,6 @@ class GIF(object):
                     # Select the active colour table.
                     if lct is not None:
                         active_colour_table = lct
-                        assert False, 'TODO: test this'
                     elif gct is not None:
                         active_colour_table = gct
                     else:
@@ -61,13 +90,17 @@ class GIF(object):
 
                     # set transparency index
                     if active_gce is not None:
-                        trans_index = active_gce.transparent_colour_index
+                        if active_gce.transparent_colour_flag:
+                            trans_index = active_gce.transparent_colour_index
+                        else:
+                            trans_index = None
                         delay_ms = active_gce.delay_time * 10
+                        disposal_method = active_gce.disposal_method
                     else:
                         trans_index = None
                         delay_ms = 0
+                        disposal_method = 0
 
-                    # TODO handle different disposal methods
                     indexes = block.pixels
                     rgba_data = [
                         tuple(active_colour_table[i]) +
@@ -76,10 +109,32 @@ class GIF(object):
                     ]
                     image_size = (block.image_descriptor.width,
                                   block.image_descriptor.height)
-                    assert self.size == image_size, (
-                        'TODO: allow image size smaller than gif size')
+                    image_pos = (block.image_descriptor.left,
+                                 block.image_descriptor.top)
 
-                    self.images.append(Image(rgba_data, image_size, delay_ms))
+                    new_state = blit_rgba(rgba_data, image_size, image_pos,
+                                          prev_state, self.size)
+
+                    if disposal_method in [0, 1]:
+                        # disposal method is unspecified or none
+                        # do not restore the previous frame in any way
+                        prev_state = new_state
+                    elif disposal_method == 2:
+                        # disposal method is background
+                        # restore the used area to the background colour
+                        fill_rgba = ([bg_colour] *
+                                     (image_size[0] * image_size[1]))
+                        prev_state = blit_rgba(fill_rgba, image_size,
+                                               image_pos, new_state, self.size)
+                    elif disposal_method == 3:
+                        # disposal method is previous
+                        # restore to previous frame after drawing on it
+                        pass # prev_state is unchanged
+                    else:
+                        raise ValueError('Unknown disposal method: {}'
+                                         .format(disposal_method))
+
+                    self.images.append(Image(new_state, image_size, delay_ms))
 
                     # the GCE goes out of scope after being used once
                     active_gce = None

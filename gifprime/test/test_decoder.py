@@ -95,3 +95,18 @@ def test_get_delays():
     # can't test this automatically because it's not exposed by pillow
     gif = GIF(get_test_gif_path('8x8gradientanim_delay_1s_2s_3s.gif'))
     assert [img.delay_ms for img in gif.images] == [1000, 2000, 3000]
+
+
+@pytest.mark.parametrize('name', [
+    'disposal_bg.gif',
+    'disposal_none.gif',
+    'disposal_prev.gif',
+])
+def test_disposal_methods(name):
+    # XXX: can't integrate these with other tests because pillow has problems
+    gif = GIF(get_test_gif_path(name))
+
+    # XXX for testing until we can make this automatic
+    #for i in range(len(gif.images)):
+    #    gif.images[0].rgba_data = gif.images[i].rgba_data
+    #    gif.save(open('test{}{}.gif'.format(name, i), 'wb'))
