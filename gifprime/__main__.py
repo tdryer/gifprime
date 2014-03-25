@@ -40,6 +40,8 @@ class GIF(object):
 
             gct = (parsed_data.gct if
                    parsed_data.logical_screen_descriptor.gct_flag else None)
+            # the most recent GCE block since the last image block.
+            active_gce = None
 
             for block in parsed_data.body:
                 if 'block_type' not in block:  # it's an image
@@ -58,9 +60,9 @@ class GIF(object):
                             'TODO: supply a default colour table')
 
                     # set transparency index
-                    if block.gce is not None:
-                        trans_index = block.gce.transparent_colour_index
-                        delay_ms = block.gce.delay_time * 10
+                    if active_gce is not None:
+                        trans_index = active_gce.transparent_colour_index
+                        delay_ms = active_gce.delay_time * 10
                     else:
                         trans_index = None
                         delay_ms = 0
@@ -79,6 +81,11 @@ class GIF(object):
 
                     self.images.append(Image(rgba_data, image_size, delay_ms))
 
+                    # the GCE goes out of scope after being used once
+                    active_gce = None
+
+                elif block.block_type == 'gce':
+                    active_gce = block
                 elif block.block_type == 'comment':
                     self.comments.append(block.comment)
                 elif block.block_type == 'application':

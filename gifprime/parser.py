@@ -110,23 +110,21 @@ gif = construct.Struct(
                 DataSubBlocks('comment'),
             ),
             construct.Struct(
-                'image',
-                construct.Optional(
-                    construct.Struct(
-                        'gce',
-                        BlockStart('gce', 0xF9),
-                        construct.Const(construct.ULInt8('block_size'), 4),
-                        construct.EmbeddedBitStruct(
-                            construct.Padding(3),  # reserved
-                            construct.macros.BitField('disposal_method', 3),
-                            construct.Flag('user_input_flag'),
-                            construct.Flag('transparent_colour_flag'),
-                        ),
-                        construct.ULInt16('delay_time'),
-                        construct.ULInt8('transparent_colour_index'),
-                        construct.Const(construct.ULInt8('terminator'), 0),
-                    ),
+                'gce_extension',
+                BlockStart('gce', 0xF9),
+                construct.Const(construct.ULInt8('block_size'), 4),
+                construct.EmbeddedBitStruct(
+                    construct.Padding(3),  # reserved
+                    construct.macros.BitField('disposal_method', 3),
+                    construct.Flag('user_input_flag'),
+                    construct.Flag('transparent_colour_flag'),
                 ),
+                construct.ULInt16('delay_time'),
+                construct.ULInt8('transparent_colour_index'),
+                construct.Const(construct.ULInt8('terminator'), 0),
+            ),
+            construct.Struct(
+                'image',
                 construct.Struct(
                     'image_descriptor',
                     construct.Const(construct.ULInt8('img_sep'), 0x2C),
