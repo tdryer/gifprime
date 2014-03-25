@@ -1,7 +1,7 @@
 """Provides LZW compression and decompression."""
 
 import math
-
+import bitarray
 import bitstring
 
 __all__ = ['compress', 'decompress']
@@ -68,26 +68,33 @@ class LZWCompressionTable(LZWDecompressionTable):
 
 
 class CodeStream(object):
-    """Integer code unpacker for LZW compressed data."""
+    """Unpacker for code stream with variable bit lengths.
+
+    The code stream is assumed to be little-endian.
+    """
 
     def __init__(self, data):
-        self.bits = bitstring.BitArray('0x' + data[::-1].encode('hex'))
-        self.end = len(self.bits)
+        self.bits = bitarray.bitarray(endian='little')
+        self.bits.frombytes(data)
+        self.pos = 0
 
     def get(self, size):
-        """Returns the next integer code using size_of(num)-bits."""
-        code = self.bits[self.end - size:self.end].uint
-        self.end -= size
-
-        # If there aren't enough bits, then it's just padding.
-        if self.end < size:
-            self.bits.clear()
-
+        """Returns the next integer code using size bits."""
+        code = self.bitlist_to_int(self.bits[self.pos:self.pos + size])
+        self.pos += size
         return code
 
+    @staticmethod
+    def bitlist_to_int(bitlist):
+        """Convert list of bits to integer."""
+        out = 0
+        for bit in reversed(bitlist):
+            out = (out << 1) | bit
+        return out
+
     def empty(self):
-        """Returns True iff. there are no bits left."""
-        return not len(self.bits)
+        """Return true if the end of the code stream has been reached."""
+        return self.pos >= len(self.bits)
 
 
 def compress(data, lzw_min):
