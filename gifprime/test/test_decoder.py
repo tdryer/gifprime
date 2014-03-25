@@ -23,10 +23,19 @@ def load_test_gif(fp):
             break
         i += 1
         images.append({'data': list(img.convert('RGBA').getdata())})
+
+    # convert loop count to number of times animation should be shown, or 0
+    if 'loop' in img.info:
+        loop = img.info['loop']
+        loop = loop if loop == 0 else loop + 1
+    else:
+        loop = 1
+
     return {
         'images': images,
         'size': img.size,
         'info': img.info,
+        'loop': loop,
     }
 
 
@@ -35,6 +44,7 @@ def load_test_gif(fp):
     'whitepixel_87a.gif',
     '8x8gradient.gif',
     '8x8gradientanim.gif',
+    '8x8gradientanim_loop_twice.gif',
     'transparentcircle.gif',
     'steam.gif',
 ])
@@ -47,6 +57,7 @@ def test_gif_decode(name):
     assert len(gif.images) == len(ref['images']), 'wrong number of frames'
     assert [d.rgba_data for d in gif.images] == \
             [i['data'] for i in ref['images']], 'wrong image data'
+    assert gif.loop_count == ref['loop']
 
 
 @pytest.mark.parametrize('name', [

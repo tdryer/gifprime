@@ -1,4 +1,4 @@
-from construct import Container
+import construct
 from math import log, ceil, pow
 
 
@@ -25,7 +25,8 @@ class GIF(object):
         self.comments = []
         self.filename = filename
         self.size = (0, 0)
-        self.loop_animation = False # TODO: set via the netscape extension
+        # number of times to show the animation, or 0 to loop forever
+        self.loop_count = 1
 
         if filename is not None:
             with open(filename, 'rb') as f:
@@ -78,8 +79,19 @@ class GIF(object):
                 elif block.block_type == 'comment':
                     self.comments.append(block.comment)
                 elif block.block_type == 'application':
-                    print ("Found app extension for '{}' containing '{}'"
-                           .format(block.app_id, block.app_data))
+                    if (block.app_id == 'NETSCAPE' and
+                        block.app_auth_code == '2.0'):
+                        contents = construct.Struct(
+                            'loop',
+                            construct.ULInt8('id'),
+                            construct.ULInt16('count'),
+                        ).parse(block.app_data)
+                        assert contents.id == 1, 'Unknown NETSCAPE extension'
+                        self.loop_count = (contents.count + 1
+                                           if contents.count != 0 else 0)
+                    else:
+                        print ('Found unknown app extension: {}'
+                               .format((block.app_id, block.app_auth_code)))
 
     def save(self, file_):
         """Encode a GIF and save it to a file."""
@@ -93,9 +105,9 @@ class GIF(object):
         colour_table_len = max(2, int(pow(2, ceil(log(len(colour_table), 2)))))
         colour_table += [(0, 0, 0)] * (colour_table_len - len(colour_table))
 
-        gif = gifprime.parser.gif.build(Container(
+        gif = gifprime.parser.gif.build(construct.Container(
             magic = 'GIF89a',
-            logical_screen_descriptor = Container(
+            logical_screen_descriptor = construct.Container(
                 logical_width = self.size[0],
                 logical_height = self.size[1],
                 gct_flag = True,
@@ -107,15 +119,15 @@ class GIF(object):
             ),
             gct = colour_table,
             body = [
-                Container(
+                construct.Container(
                     block_type = 'comment',
                     ext_intro = 0x21,
                     ext_label = 0xFE,
                     comment = 'This is a test.'
                 ),
-                Container(
+                construct.Container(
                     gce = None,
-                    image_descriptor = Container(
+                    image_descriptor = construct.Container(
                         img_sep = 0x2C,
                         left = 0,
                         top = 0,
