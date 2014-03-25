@@ -8,12 +8,13 @@ import gifprime.parser
 class Image(object):
     """A single image from a GIF."""
 
-    def __init__(self, rgba_data, size):
+    def __init__(self, rgba_data, size, delay_ms):
         self.size = size
         self.rgba_data = rgba_data
         # animation properties:
         self.user_input_flag = False
-        self.delay_time = 0
+        # number of milliseconds to show this frame, or 0 if not set
+        self.delay_ms = delay_ms
 
 
 class GIF(object):
@@ -59,8 +60,10 @@ class GIF(object):
                     # set transparency index
                     if block.gce is not None:
                         trans_index = block.gce.transparent_colour_index
+                        delay_ms = block.gce.delay_time * 10
                     else:
                         trans_index = None
+                        delay_ms = 0
 
                     # TODO handle different disposal methods
                     indexes = block.pixels
@@ -74,7 +77,7 @@ class GIF(object):
                     assert self.size == image_size, (
                         'TODO: allow image size smaller than gif size')
 
-                    self.images.append(Image(rgba_data, image_size))
+                    self.images.append(Image(rgba_data, image_size, delay_ms))
 
                 elif block.block_type == 'comment':
                     self.comments.append(block.comment)

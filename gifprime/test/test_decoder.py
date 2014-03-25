@@ -45,6 +45,7 @@ def load_test_gif(fp):
     '8x8gradient.gif',
     '8x8gradientanim.gif',
     '8x8gradientanim_loop_twice.gif',
+    '8x8gradientanim_delay_1s_2s_3s.gif',
     'transparentcircle.gif',
     'steam.gif',
 ])
@@ -71,7 +72,7 @@ def test_gif_encode(name):
     # encode image as gif
     gif = GIF()
     gif.size = ref['size']
-    gif.images = [Image(rgba_data=i['data'], size=ref['size']) for i in ref['images']]
+    gif.images = [Image(i['data'], ref['size'], 0) for i in ref['images']]
     file_ = StringIO()
     gif.save(file_)
 
@@ -85,5 +86,12 @@ def test_gif_encode(name):
 
 
 def test_get_gif_comment():
+    # can't test this automatically because it's not exposed by pillow
     gif = GIF(get_test_gif_path('whitepixel.gif'))
     assert gif.comments == ["Created with GIMP"]
+
+
+def test_get_delays():
+    # can't test this automatically because it's not exposed by pillow
+    gif = GIF(get_test_gif_path('8x8gradientanim_delay_1s_2s_3s.gif'))
+    assert [img.delay_ms for img in gif.images] == [1000, 2000, 3000]
