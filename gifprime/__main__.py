@@ -1,5 +1,6 @@
 import construct
 from math import log, ceil, pow
+import itertools
 
 
 import gifprime.parser
@@ -160,9 +161,16 @@ class GIF(object):
 
     def save(self, file_):
         """Encode a GIF and save it to a file."""
-        # TODO: all this does so far is create a 1x1 pixel white image
+        all_pixels = list(itertools.chain.from_iterable(
+            img.rgba_data for img in self.images)
+        )
+        use_transparency = any(col for col in all_pixels if col[3] != 255)
         colour_table = list(set([(r, g, b) for r, g, b, a in
                                  self.images[0].rgba_data]))
+        transparent_col_index = 0
+        if use_transparency:
+            # if we need transparency, make index 0 the transparent colour
+            colour_table = [(255, 255, 255)] + colour_table
         assert len(colour_table) <= 256, 'TODO: colour quantization'
 
         # pad colour table to nearest power of two length
@@ -191,7 +199,18 @@ class GIF(object):
                     comment = 'This is a test.'
                 ),
                 construct.Container(
-                    gce = None,
+                    block_type = 'gce',
+                    ext_intro = 0x21,
+                    ext_label = 0xF9,
+                    block_size = 4,
+                    disposal_method = 0,
+                    user_input_flag = False,
+                    transparent_colour_flag = use_transparency,
+                    delay_time = 0,
+                    transparent_colour_index = transparent_col_index,
+                    terminator = 0,
+                ),
+                construct.Container(
                     image_descriptor = construct.Container(
                         img_sep = 0x2C,
                         left = 0,
@@ -205,8 +224,10 @@ class GIF(object):
                     ),
                     lct = None,
                     lzw_min = max(2, int(log(len(colour_table), 2))),
-                    pixels = [colour_table.index((r, g, b)) for r, g, b, a
-                                                 in self.images[0].rgba_data]
+                    pixels = [
+                        colour_table.index((r, g, b)) if a == 255 else 0
+                        for r, g, b, a in self.images[0].rgba_data
+                    ],
                 ),
             ],
             trailer = 0x3B,

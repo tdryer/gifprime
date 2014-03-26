@@ -64,6 +64,7 @@ def test_gif_decode(name):
 @pytest.mark.parametrize('name', [
     'whitepixel.gif',
     '8x8gradient.gif',
+    'transparentcircle.gif',
 ])
 def test_gif_encode(name):
     # load testcase image using PIL
