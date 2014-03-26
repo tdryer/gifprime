@@ -6,6 +6,11 @@ import itertools
 import gifprime.parser
 
 
+def flatten(lst):
+    """Flatten a list of lists."""
+    return list(itertools.chain.from_iterable(lst))
+
+
 def blit_rgba(source, source_size, pos, dest, dest_size):
     """Blit source onto dest and return the result.
 
@@ -161,12 +166,9 @@ class GIF(object):
 
     def save(self, file_):
         """Encode a GIF and save it to a file."""
-        all_pixels = list(itertools.chain.from_iterable(
-            img.rgba_data for img in self.images)
-        )
+        all_pixels = flatten(img.rgba_data for img in self.images)
         use_transparency = any(col for col in all_pixels if col[3] != 255)
-        colour_table = list(set([(r, g, b) for r, g, b, a in
-                                 self.images[0].rgba_data]))
+        colour_table = list(set((r, g, b) for r, g, b, a in all_pixels))
         transparent_col_index = 0
         if use_transparency:
             # if we need transparency, make index 0 the transparent colour
@@ -178,26 +180,17 @@ class GIF(object):
         colour_table_len = max(2, int(pow(2, ceil(log(len(colour_table), 2)))))
         colour_table += [(0, 0, 0)] * (colour_table_len - len(colour_table))
 
-        gif = gifprime.parser.gif.build(construct.Container(
-            magic = 'GIF89a',
-            logical_screen_descriptor = construct.Container(
-                logical_width = self.size[0],
-                logical_height = self.size[1],
-                gct_flag = True,
-                colour_res = 7,
-                sort_flag = True,
-                gct_size = int(log(len(colour_table), 2)) - 1,
-                bg_col_index = 0,
-                pixel_aspect = 0,
-            ),
-            gct = colour_table,
-            body = [
-                construct.Container(
-                    block_type = 'comment',
-                    ext_intro = 0x21,
-                    ext_label = 0xFE,
-                    comment = 'This is a test.'
-                ),
+        comment_containers = [
+            construct.Container(
+                block_type = 'comment',
+                ext_intro = 0x21,
+                ext_label = 0xFE,
+                comment = comment,
+            ) for comment in self.comments
+        ]
+
+        image_containers = flatten([
+            [
                 construct.Container(
                     block_type = 'gce',
                     ext_intro = 0x21,
@@ -215,8 +208,8 @@ class GIF(object):
                         img_sep = 0x2C,
                         left = 0,
                         top = 0,
-                        width = self.size[0],
-                        height = self.size[1],
+                        width = image.size[0],
+                        height = image.size[1],
                         lct_flag = False,
                         interlace_flag = False,
                         sort_flag = False,
@@ -226,10 +219,50 @@ class GIF(object):
                     lzw_min = max(2, int(log(len(colour_table), 2))),
                     pixels = [
                         colour_table.index((r, g, b)) if a == 255 else 0
-                        for r, g, b, a in self.images[0].rgba_data
+                        for r, g, b, a in image.rgba_data
                     ],
                 ),
-            ],
+            ] for image in self.images
+        ])
+
+        app_ext_containers = []
+        # if this gif loops, add the application extension for looping
+        if self.loop_count != 1:
+            if self.loop_count == 0:
+                real_count = 0
+            else:
+                real_count = self.loop_count - 1
+            data = construct.Struct(
+                'loop',
+                construct.ULInt8('id'),
+                construct.ULInt16('count'),
+            ).build(construct.Container(id=1, count=real_count))
+            app_ext_containers.append(
+                construct.Container(
+                    block_type = 'application_extension',
+                    ext_intro = 0x21,
+                    ext_label = 0xFF,
+                    block_size = 11,
+                    app_id = 'NETSCAPE',
+                    app_auth_code = '2.0',
+                    app_data = data,
+                )
+            )
+
+        gif = gifprime.parser.gif.build(construct.Container(
+            magic = 'GIF89a',
+            logical_screen_descriptor = construct.Container(
+                logical_width = self.size[0],
+                logical_height = self.size[1],
+                gct_flag = True,
+                colour_res = 7,
+                sort_flag = True,
+                gct_size = int(log(len(colour_table), 2)) - 1,
+                bg_col_index = 0,
+                pixel_aspect = 0,
+            ),
+            gct = colour_table,
+            body = comment_containers + image_containers + app_ext_containers,
             trailer = 0x3B,
         ))
         file_.write(gif)

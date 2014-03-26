@@ -65,6 +65,8 @@ def test_gif_decode(name):
     'whitepixel.gif',
     '8x8gradient.gif',
     'transparentcircle.gif',
+    '8x8gradientanim.gif',
+    '8x8gradientanim_loop_twice.gif',
 ])
 def test_gif_encode(name):
     # load testcase image using PIL
@@ -74,16 +76,17 @@ def test_gif_encode(name):
     gif = GIF()
     gif.size = ref['size']
     gif.images = [Image(i['data'], ref['size'], 0) for i in ref['images']]
+    gif.loop_count = ref['loop']
     file_ = StringIO()
     gif.save(file_)
 
     # load resulting gif and compare to testcase
     file_.seek(0)
-    ref2 = load_test_gif(file_)
+    reencoded_ref = load_test_gif(file_)
     # TODO: don't compare info for now
     del ref['info']
-    del ref2['info']
-    assert ref == ref2
+    del reencoded_ref['info']
+    assert ref == reencoded_ref
 
 
 def test_get_gif_comment():
