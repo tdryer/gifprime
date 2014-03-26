@@ -1,4 +1,3 @@
-import itertools
 import sys
 
 import pygame
@@ -15,14 +14,7 @@ class LazyFrames(object):
         self.gif = gif
         self.surfaces = {}
         self.current = None
-
-    def __iter__(self):
-        while True:
-            yield self.next()
-
-    def __reversed__(self):
-        while True:
-            yield self.prev()
+        self.shown_count = 0
 
     def get_surface(self, i):
         """Gets the PyGame Surface corresponding to image[i] and its delay."""
@@ -34,31 +26,54 @@ class LazyFrames(object):
 
         return self.surfaces[i], self.gif.images[i].delay_ms
 
+    def has_next(self):
+        """Returns True iff. there is a next frame."""
+        if self.current is None or self.gif.loop_count == 0:
+            return True
+        else:
+            num_loop = self.shown_count / len(self.gif.images)
+            return not num_loop == self.gif.loop_count
+
     def next(self):
         """Returns the next (surface, delay)."""
         if self.current is None:
             self.current = -1
 
+        self.shown_count += 1
         self.current = (self.current + 1) % len(self.gif.images)
         return self.get_surface(self.current)
+
+    def has_prev(self):
+        """Returns True iff. there is a previous frame."""
+        if self.current is None or self.gif.loop_count == 0:
+            return True
+        else:
+            num_loop = -self.shown_count / len(self.gif.images)
+            return not num_loop == self.gif.loop_count
 
     def prev(self):
         """Returns the previous (surface, delay)."""
         if self.current is None:
             self.current = len(self.gif.images)
 
+        self.shown_count -= 1
         self.current = (self.current - 1) % len(self.gif.images)
         return self.get_surface(self.current)
 
 
 class GIFViewer(object):
 
+    FORWARD = 'forward'
+    BACKWARD = 'backward'
+    PAUSED = 'pause'
+
     def __init__(self, gif, width=None, height=None, fps=60):
         self.gif = gif
         self.fps = fps
 
+        self.state = self.FORWARD
+
         self.frames = LazyFrames(gif)
-        self.frames_iter = iter(self.frames)
         self.frame_delay = 0
         self.ms_since_last_frame = 0
 
@@ -74,14 +89,32 @@ class GIFViewer(object):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit(0)
+            elif event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT:
+                    self.state = self.BACKWARD
+                    print 'Backward!'
+                elif event.key == pygame.K_RIGHT:
+                    self.state = self.FORWARD
+                    print 'Forward!'
+                elif event.key == pygame.K_SPACE:
+                    self.state = self.PAUSED
+                    print 'Paused!'
 
     def handle_draw(self, elapsed):
-        self.ms_since_last_frame += elapsed
+        if self.state != self.PAUSED:
+            self.ms_since_last_frame += elapsed
+            frame = None
 
-        if self.ms_since_last_frame >= self.frame_delay:
-            frame, self.frame_delay = next(self.frames_iter)
-            self.ms_since_last_frame = 0
-            self.screen.blit(frame, (0, 0))
+            if self.ms_since_last_frame >= self.frame_delay:
+                if self.state == self.FORWARD and self.frames.has_next():
+                    frame, self.frame_delay = self.frames.next()
+                    self.screen.blit(frame, (0, 0))
+                elif self.state == self.BACKWARD and self.frames.has_prev():
+                    frame, self.frame_delay = self.frames.prev()
+                    self.screen.blit(frame, (0, 0))
+
+            if frame is not None:
+                self.ms_since_last_frame = 0
 
         pygame.display.flip()
 
