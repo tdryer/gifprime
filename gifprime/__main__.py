@@ -1,4 +1,7 @@
 from argparse import ArgumentParser
+from subprocess import check_output
+import construct
+import json
 
 from gifprime.core import GIF, Image
 
@@ -22,7 +25,23 @@ def parse_args():
 
 
 def run_encoder(args):
-    print 'TODO: hook up the gif encoder'
+    run = lambda cmd, *args: check_output(cmd.format(*args).split(' '))
+    gif = GIF()
+
+    for filepath in args.images:
+        rgba = run('convert -alpha on {} rgba:-', filepath)
+        rgba_data = [tuple(col) for col in construct.Array(
+            lambda ctx: len(rgba) / 4,
+            construct.Array(4, construct.ULInt8('col')),
+        ).parse(rgba)]
+        raw_size = json.loads(run('exiftool -j {}', filepath))[0]['ImageSize']
+        size = [int(value) for value in raw_size.split('x')]
+
+        gif.images.append(Image(rgba_data, size, 1))
+
+    print 'Saving {}...'.format(args.output)
+    gif.save(args.output)
+    print 'done'
 
 
 def run_decoder(args):

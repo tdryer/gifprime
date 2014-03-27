@@ -1,6 +1,8 @@
-import construct
 from math import log, ceil, pow
+import construct
 import itertools
+import numpy
+import scipy.cluster.vq
 
 
 import gifprime.parser
@@ -32,6 +34,14 @@ def blit_rgba(source, source_size, pos, dest, dest_size):
             else:
                 res.append(dest[y * dest_size[0] + x])
     return res
+
+
+def closest_colour(pixel, colour_table):
+    def distance(i):
+        diff = numpy.subtract(pixel, colour_table[i]) ** 2
+        return numpy.sqrt(numpy.sum(diff))
+
+    return min(range(len(colour_table)), key=distance)
 
 
 class Image(object):
@@ -173,19 +183,27 @@ class GIF(object):
 
     def save(self, file_):
         """Encode a GIF and save it to a file."""
-        all_pixels = flatten(img.rgba_data for img in self.images)
+        all_pixels = set(flatten(img.rgba_data for img in self.images))
         use_transparency = any(col for col in all_pixels if col[3] != 255)
-        colour_table = list(set((r, g, b) for r, g, b, a in all_pixels))
         transparent_col_index = 0
         if use_transparency:
             # if we need transparency, make index 0 the transparent colour
-            colour_table = [(255, 255, 255)] + colour_table
-        assert len(colour_table) <= 256, 'TODO: colour quantization'
+            colour_table = [(255, 255, 255)]
+            num_colours = 255
+        else:
+            colour_table = []
+            num_colours = 256
 
-        # pad colour table to nearest power of two length
-        # colour table length must also be at least 2
-        colour_table_len = max(2, int(pow(2, ceil(log(len(colour_table), 2)))))
-        colour_table += [(0, 0, 0)] * (colour_table_len - len(colour_table))
+        if len(all_pixels) > num_colours:
+            pixel_array = numpy.array([(r, g, b) for r, g, b, _ in all_pixels])
+            mean_colours, _ = scipy.cluster.vq.kmeans(pixel_array, num_colours)
+            colour_table += mean_colours.tolist()
+        else:
+            colour_table += list((r, g, b) for r, g, b, a in all_pixels)
+            # pad colour table to nearest power of two length
+            # colour table length must also be at least 2
+            colour_table_len = max(2, int(pow(2, ceil(log(len(colour_table), 2)))))
+            colour_table += [(0, 0, 0)] * (colour_table_len - len(colour_table))
 
         if self.comment is not None:
             comment_containers = [
@@ -228,7 +246,7 @@ class GIF(object):
                     lct = None,
                     lzw_min = max(2, int(log(len(colour_table), 2))),
                     pixels = [
-                        colour_table.index((r, g, b)) if a == 255 else 0
+                        closest_colour((r, g, b), colour_table) if a == 255 else 0
                         for r, g, b, a in image.rgba_data
                     ],
                 ),
