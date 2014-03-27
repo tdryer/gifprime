@@ -61,11 +61,14 @@ class LazyFrames(object):
 
 class GIFViewer(object):
 
+    # minimum size that the window will open at
+    MIN_SIZE = (256, 256)
+
     FORWARD = 'forward'
     BACKWARD = 'backward'
     PAUSED = 'pause'
 
-    def __init__(self, gif, width=None, height=None, fps=60):
+    def __init__(self, gif, fps=60):
         self.gif = gif
         self.fps = fps
 
@@ -73,20 +76,33 @@ class GIFViewer(object):
 
         self.frames = LazyFrames(gif)
         self.frame_delay = 0
+        self.current_frame = None
         self.ms_since_last_frame = 0
 
-        # TODO: Automatically pick a good width/height
-        self.width = self.gif.size[0] + 300
-        self.height = self.gif.size[1] + 300
+        # Set window size to minimum or large enough to show the gif
+        self.size = (max(self.MIN_SIZE[0], self.gif.size[0]),
+                     max(self.MIN_SIZE[1], self.gif.size[1]))
 
         # Setup pygame stuff
-        self.screen = pygame.display.set_mode((self.width, self.height))
+        pygame.display.set_caption('{} - gifprime'.format(gif.filename))
+        self.set_screen()
         self.clock = pygame.time.Clock()
+
+    def set_screen(self):
+        """Set the video mode and self.screen.
+
+        Called on init or when the window is resized.
+        """
+        self.screen = pygame.display.set_mode(self.size, pygame.RESIZABLE)
 
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit(0)
+            elif event.type == pygame.VIDEORESIZE:
+                self.size = event.size
+                # Reset the video mode so we can draw to a larger window
+                self.set_screen()
             elif event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT:
                     self.state = self.BACKWARD
@@ -98,22 +114,25 @@ class GIFViewer(object):
                     self.state = self.PAUSED
                     print 'Paused!'
 
-    def handle_draw(self, elapsed):
+    def update(self, elapsed):
+        """Update the animation state."""
         if self.state != self.PAUSED:
             self.ms_since_last_frame += elapsed
             frame = None
-
             if self.ms_since_last_frame >= self.frame_delay:
                 if self.state == self.FORWARD and self.frames.has_next():
-                    frame, self.frame_delay = self.frames.next()
-                    self.screen.blit(frame, (150, 150))
+                    self.current_frame, self.frame_delay = self.frames.next()
+                    self.ms_since_last_frame = 0
                 elif self.state == self.BACKWARD and self.frames.has_prev():
-                    frame, self.frame_delay = self.frames.prev()
-                    self.screen.blit(frame, (150, 150))
+                    self.current_frame, self.frame_delay = self.frames.prev()
+                    self.ms_since_last_frame = 0
 
-            if frame is not None:
-                self.ms_since_last_frame = 0
-
+    def draw(self):
+        """Draw the current animation state."""
+        # position to draw frame so it is centered
+        frame_pos = (self.size[0] / 2 - self.gif.size[0] / 2,
+                     self.size[1] / 2 - self.gif.size[1] / 2)
+        self.screen.blit(self.current_frame, frame_pos)
         pygame.display.flip()
 
     def show(self):
@@ -123,6 +142,7 @@ class GIFViewer(object):
             elapsed = pygame.time.get_ticks() - now
             now = pygame.time.get_ticks()
 
-            self.handle_draw(elapsed)
+            self.update(elapsed)
+            self.draw()
             self.handle_events()
             self.clock.tick(self.fps)
