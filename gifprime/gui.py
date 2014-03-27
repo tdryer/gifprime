@@ -1,8 +1,5 @@
-import sys
-
 import pygame
-
-from gifprime.__main__ import GIF
+import sys
 
 pygame.init()
 
@@ -22,7 +19,8 @@ class LazyFrames(object):
             image = self.gif.images[i]
             data = ''.join(''.join(chr(c) for c in pixel)
                            for pixel in image.rgba_data)
-            self.surfaces[i] = pygame.image.fromstring(data, gif.size, 'RGBA')
+            self.surfaces[i] = pygame.image.fromstring(data, self.gif.size,
+                                                       'RGBA')
 
         return self.surfaces[i], self.gif.images[i].delay_ms
 
@@ -120,7 +118,6 @@ class GIFViewer(object):
 
     def show(self):
         now = 0
-        show_fps = 0
 
         while True:
             elapsed = pygame.time.get_ticks() - now
@@ -129,13 +126,3 @@ class GIFViewer(object):
             self.handle_draw(elapsed)
             self.handle_events()
             self.clock.tick(self.fps)
-
-            show_fps = show_fps + 1
-            if show_fps % self.fps == 0:
-                print self.clock.get_fps()
-
-
-if __name__ == '__main__':
-    gif = GIF(sys.argv[1])
-    viewer = GIFViewer(gif, fps=60)
-    viewer.show()

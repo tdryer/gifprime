@@ -1,5 +1,8 @@
 from argparse import ArgumentParser
 
+from gifprime.core import GIF
+from gifprime.gui import GIFViewer
+
 
 def parse_args():
     parser = ArgumentParser('gifprime')
@@ -24,7 +27,9 @@ def run_encoder(args):
 
 
 def run_decoder(args):
-    print 'TODO: show the gif viewer'
+    gif = GIF(args.filename)
+    viewer = GIFViewer(gif)
+    viewer.show()
 
 
 def main():
