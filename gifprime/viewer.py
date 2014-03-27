@@ -1,5 +1,7 @@
+"""Graphical user interface for viewing GIF animations."""
+
 import pygame
-import sys
+
 
 pygame.init()
 
@@ -60,6 +62,7 @@ class LazyFrames(object):
 
 
 class GIFViewer(object):
+    """Graphical GIF animation viewer."""
 
     # minimum size that the window will open at
     MIN_SIZE = (256, 256)
@@ -71,6 +74,7 @@ class GIFViewer(object):
         self.is_playing = True
         self.is_reversed = False
         self.is_scaled = False
+        self.is_exiting = False
 
         self.bg_surface = pygame.image.load('background.png')
         self.frames = LazyFrames(gif)
@@ -85,6 +89,7 @@ class GIFViewer(object):
         # Setup pygame stuff
         filename = gif.filename.split('/')[-1]
         pygame.display.set_caption('{} - gifprime'.format(filename))
+        self.screen = None
         self.set_screen()
         self.clock = pygame.time.Clock()
 
@@ -105,16 +110,17 @@ class GIFViewer(object):
             self.ms_since_last_frame = 0
 
     def handle_events(self):
+        """Poll and handle pygame events."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                sys.exit(0)
+                self.is_exiting = True
             elif event.type == pygame.VIDEORESIZE:
                 self.size = event.size
                 # Reset the video mode so we can draw to a larger window
                 self.set_screen()
             elif event.type == pygame.KEYUP:
                 if event.key == pygame.K_ESCAPE:
-                    sys.exit(0)
+                    self.is_exiting = True
                 elif event.key == pygame.K_LEFT:
                     # skip back one frame
                     self.show_next_frame(backwards=True)
@@ -135,7 +141,6 @@ class GIFViewer(object):
         """Update the animation state."""
         if self.is_playing:
             self.ms_since_last_frame += elapsed
-            frame = None
             if self.ms_since_last_frame >= self.frame_delay:
                 self.show_next_frame(backwards=self.is_reversed)
 
@@ -151,7 +156,8 @@ class GIFViewer(object):
                 int(self.gif.size[0] * scale_factor),
                 int(self.gif.size[1] * scale_factor)
             )
-            scaled_frame = pygame.transform.scale(self.current_frame, scaled_size)
+            scaled_frame = pygame.transform.scale(self.current_frame,
+                                                  scaled_size)
         else:
             # no scaling
             scaled_size = self.gif.size
@@ -175,12 +181,11 @@ class GIFViewer(object):
         pygame.display.flip()
 
     def show(self):
+        """Show the GUI and enter the main event loop."""
         now = 0
-
-        while True:
+        while not self.is_exiting:
             elapsed = pygame.time.get_ticks() - now
             now = pygame.time.get_ticks()
-
             self.update(elapsed)
             self.draw()
             self.handle_events()
