@@ -74,6 +74,7 @@ class GIFViewer(object):
 
         self.state = self.FORWARD
 
+        self.bg_surface = pygame.image.load('background.png')
         self.frames = LazyFrames(gif)
         self.frame_delay = 0
         self.current_frame = None
@@ -134,6 +135,17 @@ class GIFViewer(object):
         # position to draw frame so it is centered
         frame_pos = (self.size[0] / 2 - self.gif.size[0] / 2,
                      self.size[1] / 2 - self.gif.size[1] / 2)
+        # draw the background over the entire window
+        # this also clears the previous frame, so transparency works correctly
+        for x in range(0, self.size[0], self.bg_surface.get_width()):
+            for y in range(0, self.size[1], self.bg_surface.get_height()):
+                self.screen.blit(self.bg_surface, (x, y))
+        # draw border around the frame
+        pygame.draw.rect(self.screen, (255, 0, 0), (
+            frame_pos[0] - 1, frame_pos[1] - 1,
+            self.gif.size[0] + 2, self.gif.size[1] + 2
+        ), 1)
+        # draw the frame
         self.screen.blit(self.current_frame, frame_pos)
         pygame.display.flip()
 
