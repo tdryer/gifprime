@@ -1,6 +1,10 @@
+"""Tests for the GIF encoder and decoder."""
+
 import pytest
-import PIL.Image
-from StringIO import StringIO
+from subprocess import check_output
+import json
+import construct
+import tempfile
 
 
 from gifprime.__main__ import GIF, Image
@@ -11,31 +15,53 @@ def get_test_gif_path(name):
     return 'gifprime/test/data/{}'.format(name)
 
 
-def load_test_gif(fp):
-    """Load reference GIF using pillow."""
-    img = PIL.Image.open(fp)
-    images = []
-    i = 0
-    while True:
-        try:
-            img.seek(i)
-        except EOFError:
-            break
-        i += 1
-        images.append({'data': list(img.convert('RGBA').getdata())})
+def load_reference_gif(filename):
+    """Load a GIF that we can use as a reference for testing.
 
-    # convert loop count to number of times animation should be shown, or 0
-    if 'loop' in img.info:
-        loop = img.info['loop']
-        loop = loop if loop == 0 else loop + 1
+    exiftool and ImageMagick are used here as reference decoders.
+    """
+    run = lambda cmd, *args: check_output(cmd.format(*args).split(' '))
+
+    # get comment, size, loop count from exiftool
+    exiftool_json = json.loads(run('exiftool -j {}', filename))[0]
+    comment = exiftool_json.get('Comment', None)
+    size = (exiftool_json['ImageWidth'], exiftool_json['ImageHeight'])
+    loop = exiftool_json.get('AnimationIterations', 0)
+    loop = 0 if loop == 'Infinite' else loop + 1
+
+    # get delay for each frame from ImageMagick
+    delays = run('identify -format %T, {}', filename)
+    delays = [int(d) * 10 for d in delays.split(',')[:-1]]
+
+    # Work around bugs in ImageMagick. Animations need to be coalesced so we
+    # can extract frames with disposal methods applied correctly. But for still
+    # images, do not coalesce because it can corrupt the image.
+    if exiftool_json.get('FrameCount', 1) > 1:
+        tmp_filename = '{}.coalesced.gif'.format(filename)
+        run('convert {} -coalesce {}', filename, tmp_filename)
     else:
-        loop = 1
+        tmp_filename = filename
+
+    images = []
+
+    for i in xrange(len(delays)):
+
+        # get the coalesced frame data as RGBA using ImageMagick
+        rgba = run('convert {}[{}] rgba:-', tmp_filename, i)
+        rgba_tuples = [tuple(col) for col in construct.Array(
+            lambda ctx: len(rgba) / 4,
+            construct.Array(4, construct.ULInt8('col')),
+        ).parse(rgba)]
+        images.append({
+            'data': rgba_tuples,
+            'delay': delays[i],
+        })
 
     return {
-        'images': images,
-        'size': img.size,
-        'info': img.info,
+        'size': size,
         'loop': loop,
+        'images': images,
+        'comment': comment,
     }
 
 
@@ -48,17 +74,28 @@ def load_test_gif(fp):
     '8x8gradientanim_delay_1s_2s_3s.gif',
     'transparentcircle.gif',
     'steam.gif',
+    'disposal_bg.gif',
+    'disposal_none.gif',
+    'disposal_prev.gif',
 ])
 def test_gif_decode(name):
-    ref = load_test_gif(get_test_gif_path(name))
+    """Decode GIF and compare it to reference decoding."""
+    ref = load_reference_gif(get_test_gif_path(name))
     gif = GIF(get_test_gif_path(name))
 
-    assert gif.filename == get_test_gif_path(name), 'filename not set correctly'
-    assert gif.size == ref['size'], 'size not set correctly'
-    assert len(gif.images) == len(ref['images']), 'wrong number of frames'
-    assert [d.rgba_data for d in gif.images] == \
-            [i['data'] for i in ref['images']], 'wrong image data'
+    assert gif.filename == get_test_gif_path(name)
+    assert gif.size == ref['size']
+    assert len(gif.images) == len(ref['images'])
+    gif_data = [d.rgba_data for d in gif.images]
+    ref_data = [i['data'] for i in ref['images']]
+    assert len(gif_data) == len(ref_data)
+    for gif_frame, ref_frame in zip(gif_data, ref_data):
+        assert gif_frame == ref_frame
     assert gif.loop_count == ref['loop']
+    delays = [img.delay_ms for img in gif.images]
+    ref_delays = [img['delay'] for img in ref['images']]
+    assert delays == ref_delays
+    assert gif.comment == ref['comment']
 
 
 @pytest.mark.parametrize('name', [
@@ -69,48 +106,22 @@ def test_gif_decode(name):
     '8x8gradientanim_loop_twice.gif',
 ])
 def test_gif_encode(name):
-    # load testcase image using PIL
-    ref = load_test_gif(get_test_gif_path(name))
+    """Encode a GIF, load it again, and verify it."""
+    # load GIF using reference decoder
+    ref = load_reference_gif(get_test_gif_path(name))
 
     # encode image as gif
     gif = GIF()
     gif.size = ref['size']
-    gif.images = [Image(i['data'], ref['size'], 0) for i in ref['images']]
+    gif.images = [Image(i['data'], ref['size'], i['delay'])
+                  for i in ref['images']]
     gif.loop_count = ref['loop']
-    file_ = StringIO()
-    gif.save(file_)
+    gif.comment = ref['comment']
 
-    # load resulting gif and compare to testcase
-    file_.seek(0)
-    reencoded_ref = load_test_gif(file_)
-    # TODO: don't compare info for now
-    del ref['info']
-    del reencoded_ref['info']
-    assert ref == reencoded_ref
+    with tempfile.NamedTemporaryFile() as encoded_file:
+        gif.save(encoded_file)
+        encoded_file.flush()
 
-
-def test_get_gif_comment():
-    # can't test this automatically because it's not exposed by pillow
-    gif = GIF(get_test_gif_path('whitepixel.gif'))
-    assert gif.comments == ["Created with GIMP"]
-
-
-def test_get_delays():
-    # can't test this automatically because it's not exposed by pillow
-    gif = GIF(get_test_gif_path('8x8gradientanim_delay_1s_2s_3s.gif'))
-    assert [img.delay_ms for img in gif.images] == [1000, 2000, 3000]
-
-
-@pytest.mark.parametrize('name', [
-    'disposal_bg.gif',
-    'disposal_none.gif',
-    'disposal_prev.gif',
-])
-def test_disposal_methods(name):
-    # XXX: can't integrate these with other tests because pillow has problems
-    gif = GIF(get_test_gif_path(name))
-
-    # XXX for testing until we can make this automatic
-    #for i in range(len(gif.images)):
-    #    gif.images[0].rgba_data = gif.images[i].rgba_data
-    #    gif.save(open('test{}{}.gif'.format(name, i), 'wb'))
+        # load resulting gif and compare to reference
+        reencoded_ref = load_reference_gif(encoded_file.name)
+        assert ref == reencoded_ref

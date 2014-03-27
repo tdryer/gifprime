@@ -52,7 +52,7 @@ class GIF(object):
     def __init__(self, filename=None):
         """Create a new GIF or decode one from a file."""
         self.images = []
-        self.comments = []
+        self.comment = None
         self.filename = filename
         self.size = (0, 0)
         # number of times to show the animation, or 0 to loop forever
@@ -67,7 +67,12 @@ class GIF(object):
 
             if lsd.gct_flag:
                 gct = parsed_data.gct
-                bg_colour = tuple(gct[lsd.bg_col_index]) + (255,)
+                # XXX Modern GIF implementations disregard the spec and use
+                # transparency as the background colour. This is significant
+                # for the prev and bg disposal methods. The 'correct' code is
+                # commented out below:
+                # bg_colour = tuple(gct[lsd.bg_col_index]) + (255,)
+                bg_colour = (0, 0, 0, 0)
             else:
                 gct = None
                 # XXX: this spec is not clear on what this should be
@@ -148,7 +153,9 @@ class GIF(object):
                 elif block.block_type == 'gce':
                     active_gce = block
                 elif block.block_type == 'comment':
-                    self.comments.append(block.comment)
+                    # If there are multiple comment block, we ignore all but
+                    # the last (this is unspecified behaviour).
+                    self.comment = block.comment
                 elif block.block_type == 'application':
                     if (block.app_id == 'NETSCAPE' and
                         block.app_auth_code == '2.0'):
@@ -180,14 +187,17 @@ class GIF(object):
         colour_table_len = max(2, int(pow(2, ceil(log(len(colour_table), 2)))))
         colour_table += [(0, 0, 0)] * (colour_table_len - len(colour_table))
 
-        comment_containers = [
-            construct.Container(
-                block_type = 'comment',
-                ext_intro = 0x21,
-                ext_label = 0xFE,
-                comment = comment,
-            ) for comment in self.comments
-        ]
+        if self.comment is not None:
+            comment_containers = [
+                construct.Container(
+                    block_type = 'comment',
+                    ext_intro = 0x21,
+                    ext_label = 0xFE,
+                    comment = self.comment,
+                )
+            ]
+        else:
+            comment_containers = []
 
         image_containers = flatten([
             [
@@ -199,7 +209,7 @@ class GIF(object):
                     disposal_method = 0,
                     user_input_flag = False,
                     transparent_colour_flag = use_transparency,
-                    delay_time = 0,
+                    delay_time = int(image.delay_ms / 10),
                     transparent_colour_index = transparent_col_index,
                     terminator = 0,
                 ),
