@@ -64,15 +64,12 @@ class GIFViewer(object):
     # minimum size that the window will open at
     MIN_SIZE = (256, 256)
 
-    FORWARD = 'forward'
-    BACKWARD = 'backward'
-    PAUSED = 'pause'
-
     def __init__(self, gif, fps=60):
         self.gif = gif
         self.fps = fps
 
-        self.state = self.FORWARD
+        self.is_playing = True
+        self.is_reversed = False
 
         self.bg_surface = pygame.image.load('background.png')
         self.frames = LazyFrames(gif)
@@ -96,6 +93,15 @@ class GIFViewer(object):
         """
         self.screen = pygame.display.set_mode(self.size, pygame.RESIZABLE)
 
+    def show_next_frame(self, backwards=False):
+        """Switch to the next frame, or do nothing if there isn't one."""
+        if not backwards and self.frames.has_next():
+            self.current_frame, self.frame_delay = self.frames.next()
+            self.ms_since_last_frame = 0
+        elif backwards and self.frames.has_prev():
+            self.current_frame, self.frame_delay = self.frames.prev()
+            self.ms_since_last_frame = 0
+
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -108,27 +114,25 @@ class GIFViewer(object):
                 if event.key == pygame.K_ESCAPE:
                     sys.exit(0)
                 elif event.key == pygame.K_LEFT:
-                    self.state = self.BACKWARD
-                    print 'Backward!'
+                    # skip back one frame
+                    self.show_next_frame(backwards=True)
                 elif event.key == pygame.K_RIGHT:
-                    self.state = self.FORWARD
-                    print 'Forward!'
+                    # skip forward one frame
+                    self.show_next_frame()
                 elif event.key == pygame.K_SPACE:
-                    self.state = self.PAUSED
-                    print 'Paused!'
+                    # toggle playback
+                    self.is_playing = not self.is_playing
+                elif event.key == pygame.K_r:
+                    # reverse playback direction
+                    self.is_reversed = not self.is_reversed
 
     def update(self, elapsed):
         """Update the animation state."""
-        if self.state != self.PAUSED:
+        if self.is_playing:
             self.ms_since_last_frame += elapsed
             frame = None
             if self.ms_since_last_frame >= self.frame_delay:
-                if self.state == self.FORWARD and self.frames.has_next():
-                    self.current_frame, self.frame_delay = self.frames.next()
-                    self.ms_since_last_frame = 0
-                elif self.state == self.BACKWARD and self.frames.has_prev():
-                    self.current_frame, self.frame_delay = self.frames.prev()
-                    self.ms_since_last_frame = 0
+                self.show_next_frame(backwards=self.is_reversed)
 
     def draw(self):
         """Draw the current animation state."""
