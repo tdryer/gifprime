@@ -4,6 +4,7 @@ import pygame
 
 
 pygame.init()
+pygame.font.init()
 
 
 class LazyFrames(object):
@@ -75,12 +76,15 @@ class GIFViewer(object):
         self.is_reversed = False
         self.is_scaled = False
         self.is_exiting = False
+        self.is_showing_info = False
 
         self.bg_surface = pygame.image.load('background.png')
+        self.font = pygame.font.Font(pygame.font.get_default_font(), 14)
         self.frames = LazyFrames(gif)
         self.frame_delay = 0
         self.current_frame = None
         self.ms_since_last_frame = 0
+        self.info_lines = None
 
         # Set window size to minimum or large enough to show the gif
         self.size = (max(self.MIN_SIZE[0], self.gif.size[0]),
@@ -136,6 +140,9 @@ class GIFViewer(object):
                 elif event.key == pygame.K_s:
                     # toggle scale to fit
                     self.is_scaled = not self.is_scaled
+                elif event.key == pygame.K_i:
+                    # toggle showing info
+                    self.is_showing_info = not self.is_showing_info
 
     def update(self, elapsed):
         """Update the animation state."""
@@ -143,6 +150,18 @@ class GIFViewer(object):
             self.ms_since_last_frame += elapsed
             if self.ms_since_last_frame >= self.frame_delay:
                 self.show_next_frame(backwards=self.is_reversed)
+
+        self.info_lines = [
+            '{} {} {}'.format('Playing' if self.is_playing else 'Paused',
+                              '(reversed)' if self.is_reversed else '',
+                              '(rescaled)' if self.is_scaled else ''),
+            'number of frames: {}'.format(len(self.gif.images)),
+            'number of loops: {}'.format(
+                self.gif.loop_count if self.gif.loop_count != 0
+                else 'infinite'
+            ),
+            'file: {}'.format(self.gif.filename),
+        ]
 
     def draw(self):
         """Draw the current animation state."""
@@ -178,6 +197,17 @@ class GIFViewer(object):
         ), 1)
         # draw the frame
         self.screen.blit(scaled_frame, frame_pos)
+        # draw info
+        if self.is_showing_info:
+            left = 5
+            current_y = 5
+            for line in self.info_lines:
+                font_surface = self.font.render(line, True, (0, 0, 0),
+                                                (255, 255, 255))
+                font_surface.set_alpha(200)
+                self.screen.blit(font_surface, (left, current_y))
+                current_y += font_surface.get_height() + 2
+
         pygame.display.flip()
 
     def show(self):
