@@ -83,7 +83,8 @@ class GIFViewer(object):
                      max(self.MIN_SIZE[1], self.gif.size[1]))
 
         # Setup pygame stuff
-        pygame.display.set_caption('{} - gifprime'.format(gif.filename))
+        filename = gif.filename.split('/')[-1]
+        pygame.display.set_caption('{} - gifprime'.format(filename))
         self.set_screen()
         self.clock = pygame.time.Clock()
 
