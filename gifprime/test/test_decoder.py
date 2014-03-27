@@ -7,7 +7,7 @@ import construct
 import tempfile
 
 
-from gifprime.__main__ import GIF, Image
+from gifprime.core import GIF, Image
 
 
 def get_test_gif_path(name):
