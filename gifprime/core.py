@@ -209,10 +209,11 @@ class GIF(object):
             colour_table += mean_colours.tolist()
         else:
             colour_table += list((r, g, b) for r, g, b, a in all_pixels)
-            # pad colour table to nearest power of two length
-            # colour table length must also be at least 2
-            colour_table_len = max(2, int(pow(2, ceil(log(len(colour_table), 2)))))
-            colour_table += [(0, 0, 0)] * (colour_table_len - len(colour_table))
+
+        # pad colour table to nearest power of two length
+        # colour table length must also be at least 2
+        colour_table_len = max(2, int(pow(2, ceil(log(len(colour_table), 2)))))
+        colour_table += [(0, 0, 0)] * (colour_table_len - len(colour_table))
 
         if self.comment is not None:
             comment_containers = [
