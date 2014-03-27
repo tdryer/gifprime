@@ -37,10 +37,14 @@ def run_encoder(args):
         raw_size = json.loads(run('exiftool -j {}', filepath))[0]['ImageSize']
         size = [int(value) for value in raw_size.split('x')]
 
-        gif.images.append(Image(rgba_data, size, 1))
+        gif.images.append(Image(rgba_data, size, 1000))
+
+    gif.size = size
+    gif.loop_count = 0
 
     print 'Saving {}...'.format(args.output)
-    gif.save(args.output)
+    with open(args.output, 'wb') as file_:
+        gif.save(file_)
     print 'done'
 
 
