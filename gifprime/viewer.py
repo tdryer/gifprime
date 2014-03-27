@@ -104,7 +104,9 @@ class GIFViewer(object):
                 # Reset the video mode so we can draw to a larger window
                 self.set_screen()
             elif event.type == pygame.KEYUP:
-                if event.key == pygame.K_LEFT:
+                if event.key == pygame.K_ESCAPE:
+                    sys.exit(0)
+                elif event.key == pygame.K_LEFT:
                     self.state = self.BACKWARD
                     print 'Backward!'
                 elif event.key == pygame.K_RIGHT:
