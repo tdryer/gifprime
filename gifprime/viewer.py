@@ -70,6 +70,7 @@ class GIFViewer(object):
 
         self.is_playing = True
         self.is_reversed = False
+        self.is_scaled = False
 
         self.bg_surface = pygame.image.load('background.png')
         self.frames = LazyFrames(gif)
@@ -125,6 +126,9 @@ class GIFViewer(object):
                 elif event.key == pygame.K_r:
                     # reverse playback direction
                     self.is_reversed = not self.is_reversed
+                elif event.key == pygame.K_s:
+                    # toggle scale to fit
+                    self.is_scaled = not self.is_scaled
 
     def update(self, elapsed):
         """Update the animation state."""
@@ -136,9 +140,25 @@ class GIFViewer(object):
 
     def draw(self):
         """Draw the current animation state."""
+        if self.is_scaled:
+            # scale the gif to fill the window
+            scale_factor = min(
+                float(self.size[0]) / self.gif.size[0],
+                float(self.size[1]) / self.gif.size[1]
+            )
+            scaled_size = (
+                int(self.gif.size[0] * scale_factor),
+                int(self.gif.size[1] * scale_factor)
+            )
+            scaled_frame = pygame.transform.scale(self.current_frame, scaled_size)
+        else:
+            # no scaling
+            scaled_size = self.gif.size
+            scaled_frame = self.current_frame
+
         # position to draw frame so it is centered
-        frame_pos = (self.size[0] / 2 - self.gif.size[0] / 2,
-                     self.size[1] / 2 - self.gif.size[1] / 2)
+        frame_pos = (self.size[0] / 2 - scaled_size[0] / 2,
+                     self.size[1] / 2 - scaled_size[1] / 2)
         # draw the background over the entire window
         # this also clears the previous frame, so transparency works correctly
         for x in range(0, self.size[0], self.bg_surface.get_width()):
@@ -147,10 +167,10 @@ class GIFViewer(object):
         # draw border around the frame
         pygame.draw.rect(self.screen, (255, 0, 0), (
             frame_pos[0] - 1, frame_pos[1] - 1,
-            self.gif.size[0] + 2, self.gif.size[1] + 2
+            scaled_size[0] + 2, scaled_size[1] + 2
         ), 1)
         # draw the frame
-        self.screen.blit(self.current_frame, frame_pos)
+        self.screen.blit(scaled_frame, frame_pos)
         pygame.display.flip()
 
     def show(self):
