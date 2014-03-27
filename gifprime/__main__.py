@@ -14,6 +14,8 @@ def parse_args():
     encoder = subparser.add_parser('encode', help='create a gif')
     encoder.add_argument('images', nargs='+', help='image frame for gif')
     encoder.add_argument('--output', '-o', help='output filename')
+    encoder.add_argument('--loop-count', '-l', default=0, type=int,
+                         help='0 for infinite (default)')
     encoder.set_defaults(command='encode')
 
     # Decoder
@@ -40,7 +42,7 @@ def run_encoder(args):
         gif.images.append(Image(rgba_data, size, 1000))
 
     gif.size = size
-    gif.loop_count = 0
+    gif.loop_count = args.loop_count
 
     print 'Saving {}...'.format(args.output)
     with open(args.output, 'wb') as file_:
