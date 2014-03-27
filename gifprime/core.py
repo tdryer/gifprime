@@ -36,12 +36,21 @@ def blit_rgba(source, source_size, pos, dest, dest_size):
     return res
 
 
-def closest_colour(pixel, colour_table):
-    def distance(i):
-        diff = numpy.subtract(pixel, colour_table[i]) ** 2
-        return numpy.sqrt(numpy.sum(diff))
+colour_cache = {}
 
-    return min(range(len(colour_table)), key=distance)
+
+def closest_colour(pixel, colour_table):
+    """Finds the closest colour to pixel in the colour table."""
+    key = (pixel, id(colour_table))
+
+    if key not in colour_cache:
+        def distance(i):
+            diff = numpy.subtract(pixel, colour_table[i]) ** 2
+            return numpy.sqrt(numpy.sum(diff))
+
+        colour_cache[key] = min(range(len(colour_table)), key=distance)
+
+    return colour_cache[key]
 
 
 class Image(object):
