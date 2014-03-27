@@ -123,7 +123,7 @@ class GIFViewer(object):
                 # Reset the video mode so we can draw to a larger window
                 self.set_screen()
             elif event.type == pygame.KEYUP:
-                if event.key == pygame.K_ESCAPE:
+                if event.key in [pygame.K_ESCAPE, pygame.K_q]:
                     self.is_exiting = True
                 elif event.key == pygame.K_LEFT:
                     # skip back one frame
