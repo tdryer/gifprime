@@ -148,7 +148,6 @@ gif = construct.Struct(
                     ),
                 ),
                 construct.ULInt8('lzw_min'),
-                # TODO: creates an array called data_subblocks instead of index
                 construct.Tunnel(
                     LzwAdapter(DataSubBlocks('pixels')),
                     construct.Array(

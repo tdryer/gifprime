@@ -153,7 +153,7 @@ class GIF(object):
                 elif block.block_type == 'gce':
                     active_gce = block
                 elif block.block_type == 'comment':
-                    # If there are multiple comment block, we ignore all but
+                    # If there are multiple comment blocks, we ignore all but
                     # the last (this is unspecified behaviour).
                     self.comment = block.comment
                 elif block.block_type == 'application':
