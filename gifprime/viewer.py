@@ -76,8 +76,8 @@ class GIFViewer(object):
         self.ms_since_last_frame = 0
 
         # TODO: Automatically pick a good width/height
-        self.width = 300
-        self.height = 300
+        self.width = self.gif.size[0] + 300
+        self.height = self.gif.size[1] + 300
 
         # Setup pygame stuff
         self.screen = pygame.display.set_mode((self.width, self.height))
@@ -106,10 +106,10 @@ class GIFViewer(object):
             if self.ms_since_last_frame >= self.frame_delay:
                 if self.state == self.FORWARD and self.frames.has_next():
                     frame, self.frame_delay = self.frames.next()
-                    self.screen.blit(frame, (0, 0))
+                    self.screen.blit(frame, (150, 150))
                 elif self.state == self.BACKWARD and self.frames.has_prev():
                     frame, self.frame_delay = self.frames.prev()
-                    self.screen.blit(frame, (0, 0))
+                    self.screen.blit(frame, (150, 150))
 
             if frame is not None:
                 self.ms_since_last_frame = 0
