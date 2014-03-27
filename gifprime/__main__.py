@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 
 from gifprime.core import GIF
-from gifprime.gui import GIFViewer
+from gifprime.viewer import GIFViewer
 
 
 def parse_args():
