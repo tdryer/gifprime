@@ -21,9 +21,6 @@ def blit_rgba(source, source_size, pos, dest, dest_size, transparency=True):
     If transparency is False, blitting a transparent pixel will overwrite the
     pixel under it with transparency.
     """
-    # optimize the trivial case
-    if pos == (0, 0) and source_size == dest_size:
-        return source
     window_x = (pos[0], pos[0] + source_size[0])
     window_y = (pos[1], pos[1] + source_size[1])
     res = []
@@ -206,7 +203,7 @@ class GIF(object):
         transparent_col_index = 0
         if use_transparency:
             # if we need transparency, make index 0 the transparent colour
-            colour_table = [(255, 255, 255)]
+            colour_table = [(0, 0, 0)]
             num_colours = 255
         else:
             colour_table = []
