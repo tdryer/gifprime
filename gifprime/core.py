@@ -13,10 +13,13 @@ def flatten(lst):
     return list(itertools.chain.from_iterable(lst))
 
 
-def blit_rgba(source, source_size, pos, dest, dest_size):
+def blit_rgba(source, source_size, pos, dest, dest_size, transparency=True):
     """Blit source onto dest and return the result.
 
     source and dest are lists of RGBA tuples.
+
+    If transparency is False, blitting a transparent pixel will overwrite the
+    pixel under it with transparency.
     """
     # optimize the trivial case
     if pos == (0, 0) and source_size == dest_size:
@@ -28,11 +31,16 @@ def blit_rgba(source, source_size, pos, dest, dest_size):
         for x in xrange(dest_size[0]):
             source_x = x - pos[0]
             source_y = y - pos[1]
+            dest_pix = dest[y * dest_size[0] + x]
             if source_x >= 0 and source_x < source_size[0] and \
                     source_y >= 0 and source_y < source_size[1]:
-                res.append(source[source_y * source_size[0] + source_x])
+                source_pix = source[source_y * source_size[0] + source_x]
+                if transparency and source_pix[3] != 255:
+                    res.append(dest_pix)
+                else:
+                    res.append(source_pix)
             else:
-                res.append(dest[y * dest_size[0] + x])
+                res.append(dest_pix)
     return res
 
 
@@ -155,7 +163,8 @@ class GIF(object):
                         fill_rgba = ([bg_colour] *
                                      (image_size[0] * image_size[1]))
                         prev_state = blit_rgba(fill_rgba, image_size,
-                                               image_pos, new_state, self.size)
+                                               image_pos, new_state, self.size,
+                                               transparency=False)
                     elif disposal_method == 3:
                         # disposal method is previous
                         # restore to previous frame after drawing on it
