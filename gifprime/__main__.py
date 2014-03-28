@@ -1,12 +1,16 @@
+"""Main entry point for gifprime."""
+
 from argparse import ArgumentParser
 from subprocess import check_output
 import construct
 import json
 
 from gifprime.core import GIF, Image
+from gifprime.viewer import GIFViewer
 
 
 def parse_args():
+    """Parse arguments and start the program."""
     parser = ArgumentParser('gifprime')
     subparser = parser.add_subparsers()
 
@@ -27,6 +31,7 @@ def parse_args():
 
 
 def run_encoder(args):
+    """Encode new GIF and open it in the viewer."""
     run = lambda cmd, *args: check_output(cmd.format(*args).split(' '))
     gif = GIF()
 
@@ -44,21 +49,26 @@ def run_encoder(args):
     gif.size = size
     gif.loop_count = args.loop_count
 
-    print 'Saving {}...'.format(args.output)
     with open(args.output, 'wb') as file_:
         gif.save(file_)
-    print 'done'
+
+    show_gif(args.output)
 
 
 def run_decoder(args):
-    from gifprime.viewer import GIFViewer
+    """Decode GIF by opening it with the viewer."""
+    show_gif(args.filename)
 
-    gif = GIF(args.filename)
+
+def show_gif(filename):
+    """Open filename in the viewer."""
+    gif = GIF(filename)
     viewer = GIFViewer(gif)
     viewer.show()
 
 
 def main():
+    """Main entry point."""
     args = parse_args()
 
     if args.command == 'encode':
