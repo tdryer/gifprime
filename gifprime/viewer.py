@@ -155,6 +155,7 @@ class GIFViewer(object):
             '{} {} {}'.format('Playing' if self.is_playing else 'Paused',
                               '(reversed)' if self.is_reversed else '',
                               '(rescaled)' if self.is_scaled else ''),
+            'size: {}x{}'.format(self.gif.size[0], self.gif.size[1]),
             'number of frames: {}'.format(len(self.gif.images)),
             'number of loops: {}'.format(
                 self.gif.loop_count if self.gif.loop_count != 0
