@@ -7,6 +7,7 @@ import scipy.cluster.vq
 
 
 import gifprime.parser
+from gifprime.quantize import quantize
 
 
 def flatten(lst):
@@ -192,30 +193,25 @@ class GIF(object):
 
     def save(self, file_):
         """Encode a GIF and save it to a file."""
-        all_pixels = flatten(img.rgba_data for img in self.images)
-        use_transparency = any(col for col in all_pixels if col[3] != 255)
-        transparent_col_index = 0
+        # create one list of pixels and alpha mask for all images
+        alpha_mask = flatten([a != 255 for r, g, b, a in img.rgba_data]
+                             for img in self.images)
+        rgb = flatten([(r, g, b) for r, g, b, a in img.rgba_data]
+                      for img in self.images)
+
+        # if there is any alpha, need to reverse space for a transparent colour
+        use_transparency = any(alpha_mask)
+        max_colours = 255 if use_transparency else 256
+
+        # quantize to get colour table and map
+        colour_table, colour_map = quantize(rgb, max_colours)
+
+        # add transparent colour to the table if necessary
         if use_transparency:
-            # if we need transparency, make index 0 the transparent colour
-            colour_table = [(0, 0, 0)]
-            num_colours = 255
+            transparent_col_index = len(colour_table)
+            colour_table.append((0, 0, 0))
         else:
-            colour_table = []
-            num_colours = 256
-
-        colours = list(set((r, g, b) for r, g, b, _ in all_pixels))
-
-        if len(colours) > num_colours:
-            colour_array = numpy.array(colours)
-            mean_colours, labels = scipy.cluster.vq.kmeans2(colour_array,
-                                                            num_colours,
-                                                            minit='points')
-            colour_table += numpy.round(mean_colours).tolist()
-            colour_map = {tuple(pixel): idx
-                          for pixel, idx in itertools.izip(colours, labels)}
-        else:
-            colour_table += colours
-            colour_map = {pixel: i for i, pixel in enumerate(colour_table)}
+            transparent_col_index = 0
 
         # pad colour table to nearest power of two length
         # colour table length must also be at least 2
@@ -263,7 +259,8 @@ class GIF(object):
                     lct = None,
                     lzw_min = max(2, int(log(len(colour_table), 2))),
                     pixels = [
-                        colour_map[(r, g, b)] if a == 255 else 0
+                        colour_map[(r, g, b)] if a == 255
+                        else transparent_col_index
                         for r, g, b, a in image.rgba_data
                     ],
                 ),
