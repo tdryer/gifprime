@@ -37,7 +37,12 @@ class LZWDecompressionTable(object):
 
     @property
     def code_size(self):
-        """Returns the # bits required to represent the largest code."""
+        """Returns the # bits required to represent the largest code so far."""
+        return int(math.floor(math.log(self.next_code - 1, 2)) + 1)
+
+    @property
+    def next_code_size(self):
+        """Returns the # bits required to represent the next code."""
         return int(math.floor(math.log(self.next_code, 2)) + 1)
 
     def get(self, key):
@@ -55,11 +60,6 @@ class LZWCompressionTable(LZWDecompressionTable):
 
     def _make_codes(self, next_code):
         return {chr(i): i for i in xrange(next_code)}
-
-    @property
-    def code_size(self):
-        """Returns the # bits required to represent the largest code."""
-        return int(math.floor(math.log(self.next_code - 1, 2)) + 1)
 
     def add(self, key):
         """Maps key to the next largest code."""
@@ -139,20 +139,20 @@ def decompress(data, lzw_min):
     stream = CodeStream(data)
 
     # First thing we get should be a CLEAR code
-    first_code = stream.get(table.code_size)
+    first_code = stream.get(table.next_code_size)
     assert first_code == table.clear_code
 
-    prev = stream.get(table.code_size)
+    prev = stream.get(table.next_code_size)
     yield table.get(prev)
 
     while True:
-        code = stream.get(table.code_size)
+        code = stream.get(table.next_code_size)
 
         if code == table.end_code:
             break
         elif code == table.clear_code:
             table.reinitialize()
-            prev = stream.get(table.code_size)
+            prev = stream.get(table.next_code_size)
             yield table.get(prev)
             continue
         elif stream.empty():
