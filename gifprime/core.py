@@ -41,23 +41,6 @@ def blit_rgba(source, source_size, pos, dest, dest_size, transparency=True):
     return res
 
 
-colour_cache = {}
-
-
-def closest_colour(pixel, colour_table):
-    """Finds the closest colour to pixel in the colour table."""
-    key = (pixel, id(colour_table))
-
-    if key not in colour_cache:
-        def distance(i):
-            diff = numpy.subtract(pixel, colour_table[i]) ** 2
-            return numpy.sqrt(numpy.sum(diff))
-
-        colour_cache[key] = min(range(len(colour_table)), key=distance)
-
-    return colour_cache[key]
-
-
 class Image(object):
     """A single image from a GIF."""
 
@@ -198,7 +181,7 @@ class GIF(object):
 
     def save(self, file_):
         """Encode a GIF and save it to a file."""
-        all_pixels = set(flatten(img.rgba_data for img in self.images))
+        all_pixels = flatten(img.rgba_data for img in self.images)
         use_transparency = any(col for col in all_pixels if col[3] != 255)
         transparent_col_index = 0
         if use_transparency:
@@ -209,12 +192,19 @@ class GIF(object):
             colour_table = []
             num_colours = 256
 
-        if len(all_pixels) > num_colours:
-            pixel_array = numpy.array([(r, g, b) for r, g, b, _ in all_pixels])
-            mean_colours, _ = scipy.cluster.vq.kmeans(pixel_array, num_colours)
-            colour_table += mean_colours.tolist()
+        colours = list(set((r, g, b) for r, g, b, _ in all_pixels))
+
+        if len(colours) > num_colours:
+            colour_array = numpy.array(colours)
+            mean_colours, labels = scipy.cluster.vq.kmeans2(colour_array,
+                                                            num_colours,
+                                                            minit='points')
+            colour_table += numpy.round(mean_colours).tolist()
+            colour_map = {tuple(pixel): idx
+                          for pixel, idx in itertools.izip(colours, labels)}
         else:
-            colour_table += list((r, g, b) for r, g, b, a in all_pixels)
+            colour_table += colours
+            colour_map = {pixel: i for i, pixel in enumerate(colour_table)}
 
         # pad colour table to nearest power of two length
         # colour table length must also be at least 2
@@ -262,7 +252,7 @@ class GIF(object):
                     lct = None,
                     lzw_min = max(2, int(log(len(colour_table), 2))),
                     pixels = [
-                        closest_colour((r, g, b), colour_table) if a == 255 else 0
+                        colour_map[(r, g, b)] if a == 255 else 0
                         for r, g, b, a in image.rgba_data
                     ],
                 ),
