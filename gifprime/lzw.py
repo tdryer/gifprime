@@ -97,7 +97,7 @@ class CodeStream(object):
         return self.pos >= len(self.bits)
 
 
-def compress(data, lzw_min):
+def compress(data, lzw_min, max_code_size=12):
     """Generate compressed data using LZW."""
     table = LZWCompressionTable(lzw_min)
 
@@ -113,6 +113,10 @@ def compress(data, lzw_min):
                 yield table.get(prev)
                 table.add(prev + char)
                 prev = char
+
+                if table.next_code_size > max_code_size:
+                    yield table.get(table.clear_code)
+                    table.reinitialize()
 
         if prev:
             yield table.get(prev)

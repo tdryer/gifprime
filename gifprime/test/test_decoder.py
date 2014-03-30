@@ -106,6 +106,7 @@ def test_gif_decode(name):
     'transparentcircle.gif',
     '8x8gradientanim.gif',
     '8x8gradientanim_loop_twice.gif',
+    'requires_clear_code.gif',
 ])
 def test_gif_encode(name):
     """Encode a GIF, load it again, and verify it."""
