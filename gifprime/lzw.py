@@ -133,33 +133,29 @@ def compress(data, lzw_min):
         del remainder[-8:]
 
 
-def decompress(data, lzw_min):
+def decompress(data, lzw_min, max_code_size=12):
     """Generate decompressed data using LZW."""
     table = LZWDecompressionTable(lzw_min)
     stream = CodeStream(data)
 
-    # First thing we get should be a CLEAR code
-    first_code = stream.get(table.next_code_size)
-    assert first_code == table.clear_code
-
-    prev = stream.get(table.next_code_size)
-    yield table.get(prev)
-
+    prev = None
     while True:
-        code = stream.get(table.next_code_size)
+        code = stream.get(min(table.next_code_size, max_code_size))
 
         if code == table.end_code:
             break
         elif code == table.clear_code:
             table.reinitialize()
-            prev = stream.get(table.next_code_size)
-            yield table.get(prev)
+            prev = None
             continue
         elif stream.empty():
             raise ValueError('Reached end of stream without END code')
         elif code in table:
             yield table.get(code)
-            table.add(table.get(prev) + table.get(code)[0])
+            if prev is not None:
+                table.add(table.get(prev) + table.get(code)[0])
+        elif prev is None:
+            raise ValueError('First code after a reset must be in the table')
         else:
             yield table.get(prev) + table.get(prev)[0]
             table.add(table.get(prev) + table.get(prev)[0])
