@@ -2,6 +2,7 @@ from math import log, ceil, pow
 import construct
 import itertools
 import numpy
+import requests
 import scipy.cluster.vq
 
 
@@ -56,7 +57,19 @@ class Image(object):
 class GIF(object):
     """A GIF image or animation."""
 
-    def __init__(self, filename=None):
+    @classmethod
+    def from_file(cls, filename):
+        with open(filename, 'rb') as file_:
+            data_stream = file_.read()
+        return cls(data_stream, filename)
+
+    @classmethod
+    def from_url(cls, url):
+        response = requests.get(url)
+        assert response.headers['content-type'] == 'image/gif', 'must be a gif'
+        return cls(response.content, response.url.rsplit('/', 1)[-1])
+
+    def __init__(self, data_stream=None, filename=None):
         """Create a new GIF or decode one from a file."""
         self.images = []
         self.comment = None
@@ -65,9 +78,7 @@ class GIF(object):
         # number of times to show the animation, or 0 to loop forever
         self.loop_count = 1
 
-        if filename is not None:
-            with open(filename, 'rb') as f:
-                data_stream = f.read()
+        if data_stream is not None:
             parsed_data = gifprime.parser.gif.parse(data_stream)
             lsd = parsed_data.logical_screen_descriptor
             self.size = (lsd.logical_width, lsd.logical_height)

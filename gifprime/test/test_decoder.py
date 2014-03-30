@@ -83,7 +83,7 @@ def load_reference_gif(filename):
 def test_gif_decode(name):
     """Decode GIF and compare it to reference decoding."""
     ref = load_reference_gif(get_test_gif_path(name))
-    gif = GIF(get_test_gif_path(name))
+    gif = GIF.from_file(get_test_gif_path(name))
 
     assert gif.filename == get_test_gif_path(name)
     assert gif.size == ref['size']
