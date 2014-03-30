@@ -1,21 +1,42 @@
 """Main entry point for gifprime."""
 
 from argparse import ArgumentParser
+from contextlib import contextmanager
 from subprocess import check_output
 import construct
 import json
 import os
 import praw
 import requests
+import time
 
 from gifprime.core import GIF, Image
 from gifprime.util import readable_size
 from gifprime.viewer import GIFViewer
 
 
+@contextmanager
+def measure_time(label, print_output):
+    """Context manager for measuring execution time."""
+    if print_output:
+        print 'starting {}...'.format(label)
+    start_sec = time.time()
+    start_clock = time.clock()
+    yield
+    elapsed_sec = time.time() - start_sec
+    elapsed_clock = time.clock() - start_clock
+    if print_output:
+        print ('... {} complete: {:.3f} seconds, {:.3f} cpu time'
+               .format(label, elapsed_sec, elapsed_clock))
+
+
 def parse_args():
     """Parse arguments and start the program."""
     parser = ArgumentParser('gifprime')
+    parser.add_argument(
+        '--time', '-t', help='report encoding and decoding times',
+        default=False, action='store_true'
+    )
     subparser = parser.add_subparsers()
 
     # Encoder
@@ -59,14 +80,15 @@ def run_encoder(args):
     gif.loop_count = args.loop_count
 
     with open(args.output, 'wb') as file_:
-        gif.save(file_)
+        with measure_time('encode', args.time):
+            gif.save(file_)
 
-    show_gif(args.output)
+    show_gif(args.output, benchmark=args.time)
 
 
 def run_decoder(args):
     """Decode GIF by opening it with the viewer."""
-    show_gif(args.filename)
+    show_gif(args.filename, benchmark=args.time)
 
 
 def run_reddit(args):
@@ -76,17 +98,18 @@ def run_reddit(args):
     num_bytes = int(requests.head(post.url).headers['content-length'])
 
     print 'Found one! "{}", {}'.format(post.title, readable_size(num_bytes))
-    show_gif(post.url)
+    show_gif(post.url, benchmark=args.time)
 
 
-def show_gif(uri):
+def show_gif(uri, benchmark=False):
     """Open a file or URL in the viewer."""
     if uri.startswith('http'):
         print 'Downloading...'
         gif = GIF.from_url(uri)
     elif os.path.isfile(uri):
         print 'Loading...'
-        gif = GIF.from_file(uri)
+        with measure_time('decode', benchmark):
+            gif = GIF.from_file(uri)
     else:
         assert False, 'Expected a filename or URL'
 
