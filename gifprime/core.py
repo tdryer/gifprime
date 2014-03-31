@@ -1,9 +1,7 @@
-from math import log, ceil, pow
+from math import log, ceil
 import construct
 import itertools
-import numpy
 import requests
-import scipy.cluster.vq
 
 
 import gifprime.parser
