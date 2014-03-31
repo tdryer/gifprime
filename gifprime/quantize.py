@@ -35,7 +35,7 @@ class ColourCube(object):
         Children are lazily instantiated as needed.
         """
         if self.depth == MAX_DEPTH:
-            return []
+            self.children = []
         elif self.children is None:
             v = self.vertex_low
             perms = itertools.product([0, 1], repeat=3)
@@ -47,9 +47,7 @@ class ColourCube(object):
                            self.depth + 1)
                 for low in child_lows
             ]
-            return self.children
-        else:
-            return self.children
+        return self.children
 
     def has_initialized_children(self):
         """Return True if this node's children have been initialized."""
@@ -65,10 +63,14 @@ class ColourCube(object):
         return abs(sum(pow(colour[i] - self.center[i], 2) for i in range(3)))
 
     def get_deepest_containing(self, colour):
-        """Return the deepest node containing colour."""
-        for child in self.get_children():
-            if child.contains(colour):
-                return child.get_deepest_containing(colour)
+        """Return the deepest node containing colour.
+
+        Does not generate new nodes.
+        """
+        if self.has_initialized_children():
+            for child in self.get_children():
+                if child.contains(colour):
+                    return child.get_deepest_containing(colour)
         return self
 
     def prune(self, child):
@@ -76,8 +78,11 @@ class ColourCube(object):
         if child not in self.get_children():
             raise ValueError('{} is not a child of {}'.format(child, self))
         # recursively prune the child's children
-        for child_child in child.get_children():
+        # XXX child.children can be None here
+        # iterate over copy of the list
+        for child_child in list(child.get_children()):
             child.prune(child_child)
+        assert child.children == [], 'child has not been recursively pruned'
         # prune the child
         self.num_pixels_exclusive += child.num_pixels_exclusive
         self.pixel_sums = tuple(self.pixel_sums[i] + child.pixel_sums[i]
