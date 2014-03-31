@@ -17,10 +17,10 @@ MAX_DEPTH = 8
 class ColourCube(object):
     """A cube contained in a colour space."""
 
-    def __init__(self, vertex_low, vertex_high, depth):
+    def __init__(self, vertex_low, vertex_high, depth=0):
         self.vertex_low = vertex_low
         self.vertex_high = vertex_high
-        self.children = None
+        self.children = []
         self.center = tuple([((self.vertex_low[i] + self.vertex_high[i]) / 2)
                              for i in range(3)])
         self.depth = depth
@@ -29,29 +29,32 @@ class ColourCube(object):
         self.pixel_sums = (0, 0, 0)
         self.error = 0
 
-    def get_children(self):
-        """Return this cube's 8 child cubes, or [] if this is a leaf
+    def generate_child_for(self, colour):
+        """Return this Cube's child containing colour.
 
-        Children are lazily instantiated as needed.
+        Returns None if no such child exists. This method allows lazily
+        generating the octree.
         """
+        # if at max depth, there is no child
         if self.depth == MAX_DEPTH:
-            self.children = []
-        elif self.children is None:
-            v = self.vertex_low
-            perms = itertools.product([0, 1], repeat=3)
-            size = (self.vertex_high[0] - self.vertex_low[0]) / 2
-            child_lows = [tuple([v[i] + (size + 1) * p[i] for i in range(3)])
-                          for p in perms]
-            self.children = [
-                ColourCube(low, (low[0] + size, low[1] + size, low[2] + size),
-                           self.depth + 1)
-                for low in child_lows
-            ]
-        return self.children
-
-    def has_initialized_children(self):
-        """Return True if this node's children have been initialized."""
-        return self.children is not None and len(self.children) > 0
+            return None
+        # find the child cube that the colour falls in
+        size = (self.vertex_high[0] - self.vertex_low[0]) / 2
+        midpoints = [self.vertex_low[i] + size + 1 for i in range(3)]
+        child_low = tuple(self.vertex_low[i] if colour[i] < midpoints[i]
+                          else midpoints[i] for i in range(3))
+        # if that cube has already been generated, use it
+        for child in self.children:
+            if child.vertex_low == child_low:
+                return child
+        # otherwise, instantiate a new ColourCube and add it as a child
+        child_high = tuple(child_low[i] + size for i in range(3))
+        child = ColourCube(child_low, child_high, self.depth + 1)
+        self.children.append(child)
+        assert len(self.children) <= 8
+        assert child.contains(colour), (
+            '{} does not contain {}'.format(child, colour))
+        return child
 
     def contains(self, colour):
         """Return True if this cube contains colour."""
@@ -67,20 +70,18 @@ class ColourCube(object):
 
         Does not generate new nodes.
         """
-        if self.has_initialized_children():
-            for child in self.get_children():
-                if child.contains(colour):
-                    return child.get_deepest_containing(colour)
+        for child in self.children:
+            if child.contains(colour):
+                return child.get_deepest_containing(colour)
         return self
 
     def prune(self, child):
         """Prune the given child of this node."""
-        if child not in self.get_children():
-            raise ValueError('{} is not a child of {}'.format(child, self))
+        assert child in self.children
         # recursively prune the child's children
         # XXX child.children can be None here
-        # iterate over copy of the list
-        for child_child in list(child.get_children()):
+        # iterate over copy of the list since it will be mutated
+        for child_child in list(child.children):
             child.prune(child_child)
         assert child.children == [], 'child has not been recursively pruned'
         # prune the child
@@ -94,18 +95,14 @@ class ColourCube(object):
                                          self.vertex_low, self.vertex_high)
 
 
-RGB = ColourCube((0, 0, 0), (255, 255, 255), 0)
-TEST_IMG = [(255, 0, 0), (254, 0, 0), (100, 0, 0), (0, 0, 0)]
-
 def all_nodes(node):
     """Return all initialized nodes."""
     nodes = [node]
     while nodes:
         node = nodes.pop()
         yield node
-        if node.has_initialized_children():
-            for child in node.get_children():
-                nodes.append(child)
+        for child in node.children:
+            nodes.append(child)
 
 
 def quantize(rgb_tuples, max_colours):
@@ -114,7 +111,7 @@ def quantize(rgb_tuples, max_colours):
     Returns a colour table and a mapping from every unique colour to a colour
     table index.
     """
-    tree = ColourCube((0, 0, 0), (255, 255, 255), 0)
+    tree = ColourCube((0, 0, 0), (255, 255, 255))
 
     # CLASSIFICATION
 
@@ -123,27 +120,16 @@ def quantize(rgb_tuples, max_colours):
         while node is not None:
             # update the node
             node.num_pixels += 1
-            if len(node.get_children()) == 0:
+            child = node.generate_child_for(pixel)
+            if child is None:
                 node.num_pixels_exclusive += 1
                 node.pixel_sums = tuple([node.pixel_sums[i] + pixel[i]
                                          for i in range(3)])
-            node.error += node.center_squared_distance_to(pixel)
-
-            # find the next node
-            children = node.get_children()
-            node = None
-            for child in children:
-                if child.contains(pixel):
-                    node = child
+            else:
+                node.error += node.center_squared_distance_to(pixel)
+            node = child
 
     # REDUCTION
-
-    # XXX remove unused nodes
-    for node in all_nodes(tree):
-        if node.has_initialized_children():
-            for child in list(node.get_children()):
-                if child.num_pixels == 0:
-                    node.children.remove(child)
 
     min_e = 0
     while len(list(node for node in all_nodes(tree)
@@ -152,14 +138,15 @@ def quantize(rgb_tuples, max_colours):
         while nodes:
             node = nodes.pop()
             assert node.error > 0, str(node)
-            children = node.get_children()
-            for child in children:
+            # iterate over COPY of the list
+            for child in list(node.children):
+                # prune the nodes with the MINIMUM error
                 if child.error <= min_e:
-                    # prune the nodes with the MINIMUM error
                     node.prune(child)
                 else:
                     nodes.append(child)
 
+        # TODO get rid of the extra loop
         min_e = min(node.error for node in all_nodes(tree))
 
     # ASSIGNMENT
@@ -174,9 +161,8 @@ def quantize(rgb_tuples, max_colours):
                              for i in range(3))
             colour_list.append(mean_col)
             node_to_index[node] = len(colour_list) - 1
-        if node.has_initialized_children():
-            for child in node.get_children():
-                nodes.append(child)
+        for child in node.children:
+            nodes.append(child)
 
     # for each pixel, find deepest code containing its colour
     colour_map = {}  # (r, g, b) -> index in colour table
