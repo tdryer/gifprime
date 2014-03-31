@@ -141,7 +141,7 @@ def quantize(rgb_tuples, max_colours):
     # XXX remove unused nodes
     for node in all_nodes(tree):
         if node.has_initialized_children():
-            for child in node.get_children():
+            for child in list(node.get_children()):
                 if child.num_pixels == 0:
                     node.children.remove(child)
 
