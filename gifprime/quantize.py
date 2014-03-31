@@ -105,16 +105,9 @@ def all_nodes(node):
             nodes.append(child)
 
 
-def quantize(rgb_tuples, max_colours):
-    """Quantize list of RGB tuples to at most max_colours.
-
-    Returns a colour table and a mapping from every unique colour to a colour
-    table index.
-    """
+def _classify(rgb_tuples):
+    """Construct octree from colours in image."""
     tree = ColourCube((0, 0, 0), (255, 255, 255))
-
-    # CLASSIFICATION
-
     for pixel in rgb_tuples:
         node = tree
         while node is not None:
@@ -128,9 +121,11 @@ def quantize(rgb_tuples, max_colours):
             else:
                 node.error += node.center_squared_distance_to(pixel)
             node = child
+    return tree
 
-    # REDUCTION
 
+def _reduce(tree, max_colours):
+    """Reduce octree until it contains fewer than max_colours colours."""
     min_e = 0
     while len(list(node for node in all_nodes(tree)
                    if node.num_pixels_exclusive > 0)) > max_colours:
@@ -149,8 +144,9 @@ def quantize(rgb_tuples, max_colours):
         # TODO get rid of the extra loop
         min_e = min(node.error for node in all_nodes(tree))
 
-    # ASSIGNMENT
 
+def _assign(rgb_tuples, tree):
+    """Use octree to assign the image's colour to quantized colours."""
     colour_list = []
     node_to_index = {}
     nodes = [tree]
@@ -172,3 +168,14 @@ def quantize(rgb_tuples, max_colours):
             colour_map[pixel] = node_to_index[node]
 
     return colour_list, colour_map
+
+
+def quantize(rgb_tuples, max_colours):
+    """Quantize list of RGB tuples to at most max_colours.
+
+    Returns a colour table and a mapping from every unique colour to a colour
+    table index.
+    """
+    tree = _classify(rgb_tuples)
+    _reduce(tree, max_colours)
+    return _assign(rgb_tuples, tree)
