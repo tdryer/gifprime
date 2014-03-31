@@ -15,13 +15,15 @@ def get_test_gif_path(name):
     return 'gifprime/test/data/{}'.format(name)
 
 
+def run(cmd, *args):
+    return check_output(cmd.format(*args).split(' '))
+
+
 def load_reference_gif(filename):
     """Load a GIF that we can use as a reference for testing.
 
     exiftool and ImageMagick are used here as reference decoders.
     """
-    run = lambda cmd, *args: check_output(cmd.format(*args).split(' '))
-
     # get comment, size, loop count from exiftool
     exiftool_json = json.loads(run('exiftool -j {}', filename))[0]
     comment = exiftool_json.get('Comment', None)
@@ -121,6 +123,38 @@ def test_gif_encode(name):
     gif.loop_count = ref['loop']
     gif.comment = ref['comment']
 
+    with tempfile.NamedTemporaryFile() as encoded_file:
+        gif.save(encoded_file)
+        encoded_file.flush()
+
+        # load resulting gif and compare to reference
+        reencoded_ref = load_reference_gif(encoded_file.name)
+        assert ref == reencoded_ref
+
+
+@pytest.mark.parametrize('name', [
+    'quantize_manycolours',
+    'quantize_similarcolours',
+    'quantize_withtransparent',
+])
+def test_gif_quantization(name):
+    # load un-quantized PNG
+    png_path = get_test_gif_path(name + '.png')
+    rgba = run('convert {} rgba:-', png_path)
+    rgba_tuples = [tuple(col) for col in construct.Array(
+        lambda ctx: len(rgba) / 4,
+        construct.Array(4, construct.ULInt8('col')),
+    ).parse(rgba)]
+
+    # load expected quantized gif
+    ref = load_reference_gif(get_test_gif_path(name + '.gif'))
+
+    # convert PNG to quantized GIF
+    gif = GIF()
+    gif.size = ref['size']
+    gif.images = [Image(rgba_tuples, ref['size'], ref['images'][0]['delay'])]
+    gif.loop_count = ref['loop']
+    gif.comment = ref['comment']
     with tempfile.NamedTemporaryFile() as encoded_file:
         gif.save(encoded_file)
         encoded_file.flush()
