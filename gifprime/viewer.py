@@ -210,7 +210,7 @@ class GIFViewer(object):
             left = 5
             current_y = 5
             for line in self.info_lines:
-                font_surface = self.font.render(line, True, (0, 0, 0),
+                font_surface = self.font.render(line.strip(), True, (0, 0, 0),
                                                 (255, 255, 255))
                 font_surface.set_alpha(200)
                 self.screen.blit(font_surface, (left, current_y))
