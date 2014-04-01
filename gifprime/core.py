@@ -77,7 +77,7 @@ class GIF(object):
         # number of times to show the animation, or 0 to loop forever
         self.loop_count = 1
 
-        if data_stream is not None:
+        if data_stream:
             parsed_data = gifprime.parser.gif.parse(data_stream)
             lsd = parsed_data.logical_screen_descriptor
             self.size = (lsd.logical_width, lsd.logical_height)
