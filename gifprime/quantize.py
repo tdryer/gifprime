@@ -79,7 +79,6 @@ class ColourCube(object):
         """Prune the given child of this node."""
         assert child in self.children
         # recursively prune the child's children
-        # XXX child.children can be None here
         # iterate over copy of the list since it will be mutated
         for child_child in list(child.children):
             child.prune(child_child)
@@ -129,9 +128,13 @@ def _reduce(tree, max_colours):
     min_e = 0
     while len(list(node for node in all_nodes(tree)
                    if node.num_pixels_exclusive > 0)) > max_colours:
+        next_min_e = None
         nodes = [tree]
         while nodes:
             node = nodes.pop()
+            next_min_e = (node.error
+                          if next_min_e is None or node.error < next_min_e
+                          else next_min_e)
             assert node.error > 0, str(node)
             # iterate over COPY of the list
             for child in list(node.children):
@@ -140,9 +143,7 @@ def _reduce(tree, max_colours):
                     node.prune(child)
                 else:
                     nodes.append(child)
-
-        # TODO get rid of the extra loop
-        min_e = min(node.error for node in all_nodes(tree))
+        min_e = next_min_e
 
 
 def _assign(rgb_tuples, tree):
