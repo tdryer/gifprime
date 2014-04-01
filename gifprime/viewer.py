@@ -195,13 +195,22 @@ class GIFViewer(object):
                      self.size[1] / 2 - scaled_size[1] / 2)
         # draw the background over the entire window
         # this also clears the previous frame, so transparency works correctly
-        for x in range(0, self.size[0], self.bg_surface.get_width()):
-            for y in range(0, self.size[1], self.bg_surface.get_height()):
-                self.screen.blit(self.bg_surface, (x, y))
+        self.screen.fill((220, 220, 220))
+        frame_right = frame_pos[0] + scaled_size[0]
+        frame_bottom = frame_pos[1] + scaled_size[1]
+        for x in range(frame_pos[0], frame_right, self.bg_surface.get_width()):
+            for y in range(frame_pos[1], frame_bottom,
+                           self.bg_surface.get_height()):
+                self.screen.blit(self.bg_surface, (x, y),
+                                 (0, 0, frame_right - x, frame_bottom - y))
         # draw border around the frame
-        pygame.draw.rect(self.screen, (255, 0, 0), (
+        pygame.draw.rect(self.screen, (255, 255, 255), (
             frame_pos[0] - 1, frame_pos[1] - 1,
             scaled_size[0] + 2, scaled_size[1] + 2
+        ), 1)
+        pygame.draw.rect(self.screen, (150, 150, 150), (
+            frame_pos[0] - 2, frame_pos[1] - 2,
+            scaled_size[0] + 4, scaled_size[1] + 4
         ), 1)
         # draw the frame
         self.screen.blit(scaled_frame, frame_pos)
