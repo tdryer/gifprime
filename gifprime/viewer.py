@@ -162,6 +162,9 @@ class GIFViewer(object):
                 self.gif.loop_count if self.gif.loop_count != 0
                 else 'infinite'
             ),
+            'current loop: {}'.format(self.frames.loop_count),
+            'current frame: {}'.format(self.frames.current),
+            'current frame delay: {} ms'.format(self.frame_delay),
             'file: {}'.format(self.gif.filename),
         ]
 
