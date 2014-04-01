@@ -65,7 +65,7 @@ class GIFViewer(object):
     """Graphical GIF animation viewer."""
 
     # minimum size that the window will open at
-    MIN_SIZE = (256, 256)
+    MIN_SIZE = (400, 250)
 
     def __init__(self, gif, fps=60):
         self.gif = gif
