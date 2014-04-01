@@ -2,6 +2,8 @@
 
 import pygame
 
+from gifprime.util import readable_size
+
 
 pygame.init()
 pygame.font.init()
@@ -162,7 +164,11 @@ class GIFViewer(object):
             'frame: {} / {} ({} ms delay)'.format(self.frames.current + 1,
                                                   len(self.gif.images),
                                                   self.frame_delay),
-            'file: {}'.format(self.gif.filename),
+            'compression ratio: {:.2%} ({} / {})'.format(
+                float(self.gif.compressed_size) / self.gif.uncompressed_size,
+                readable_size(self.gif.compressed_size),
+                readable_size(self.gif.uncompressed_size),
+            ),
         ]
 
     def draw(self):

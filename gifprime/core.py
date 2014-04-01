@@ -68,7 +68,7 @@ class GIF(object):
         assert response.headers['content-type'] == 'image/gif', 'must be a gif'
         return cls(response.content, response.url.rsplit('/', 1)[-1])
 
-    def __init__(self, data_stream=None, filename=None):
+    def __init__(self, data_stream='', filename=None):
         """Create a new GIF or decode one from a file."""
         self.images = []
         self.comment = None
@@ -188,6 +188,9 @@ class GIF(object):
                     else:
                         print ('Found unknown app extension: {}'
                                .format((block.app_id, block.app_auth_code)))
+
+        self.compressed_size = len(data_stream)
+        self.uncompressed_size = sum(len(i.rgba_data) for i in self.images)
 
     def save(self, file_):
         """Encode a GIF and save it to a file."""
