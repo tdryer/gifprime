@@ -8,10 +8,13 @@ import itertools
 
 
 # The maximum depth of the colour octree. Should be in range [3, 6]. Higher is
-# slower but with higher quality.
-# TODO: If < 8, even images with fewer than 256 colours will be quantized if
-# colours are similar.
+# slower but with higher quality. Anything less than 8 will cause loss on
+# images even with fewer than max_colours.
 MAX_DEPTH = 8
+
+
+# Minor optimization
+COMPONENTS = range(3)
 
 
 class ColourCube(object):
@@ -22,7 +25,7 @@ class ColourCube(object):
         self.vertex_high = vertex_high
         self.children = []
         self.center = tuple([((self.vertex_low[i] + self.vertex_high[i]) / 2)
-                             for i in range(3)])
+                             for i in COMPONENTS])
         self.depth = depth
         self.num_pixels = 0
         self.num_pixels_exclusive = 0
@@ -40,30 +43,28 @@ class ColourCube(object):
             return None
         # find the child cube that the colour falls in
         size = (self.vertex_high[0] - self.vertex_low[0]) / 2
-        midpoints = [self.vertex_low[i] + size + 1 for i in range(3)]
+        midpoints = [self.vertex_low[i] + size + 1 for i in COMPONENTS]
         child_low = tuple(self.vertex_low[i] if colour[i] < midpoints[i]
-                          else midpoints[i] for i in range(3))
+                          else midpoints[i] for i in COMPONENTS)
         # if that cube has already been generated, use it
         for child in self.children:
             if child.vertex_low == child_low:
                 return child
         # otherwise, instantiate a new ColourCube and add it as a child
-        child_high = tuple(child_low[i] + size for i in range(3))
+        child_high = tuple(child_low[i] + size for i in COMPONENTS)
         child = ColourCube(child_low, child_high, self.depth + 1)
         self.children.append(child)
         assert len(self.children) <= 8
-        assert child.contains(colour), (
-            '{} does not contain {}'.format(child, colour))
         return child
 
     def contains(self, colour):
         """Return True if this cube contains colour."""
         return all((colour[i] >= self.vertex_low[i] and
-                    colour[i] <= self.vertex_high[i]) for i in range(3))
+                    colour[i] <= self.vertex_high[i]) for i in COMPONENTS)
 
     def center_squared_distance_to(self, colour):
         """Return the squared distance from this cube's center to colour."""
-        return abs(sum(pow(colour[i] - self.center[i], 2) for i in range(3)))
+        return abs(sum(pow(colour[i] - self.center[i], 2) for i in COMPONENTS))
 
     def get_deepest_containing(self, colour):
         """Return the deepest node containing colour.
@@ -86,7 +87,7 @@ class ColourCube(object):
         # prune the child
         self.num_pixels_exclusive += child.num_pixels_exclusive
         self.pixel_sums = tuple(self.pixel_sums[i] + child.pixel_sums[i]
-                                for i in range(3))
+                                for i in COMPONENTS)
         self.children.remove(child)
 
     def __repr__(self):
@@ -95,14 +96,12 @@ class ColourCube(object):
 
 
 def all_nodes(node):
-    """Return all initialized nodes."""
-    nodes = [node]
-    while nodes:
-        node = nodes.pop()
+    """Yield all nodes via breadth-first search."""
+    node_list = [node]
+    while node_list:
+        node = node_list.pop()
+        node_list.extend(node.children)
         yield node
-        for child in node.children:
-            nodes.append(child)
-
 
 def _classify(rgb_tuples):
     """Construct octree from colours in image."""
@@ -113,12 +112,11 @@ def _classify(rgb_tuples):
             # update the node
             node.num_pixels += 1
             child = node.generate_child_for(pixel)
+            node.error += node.center_squared_distance_to(pixel)
             if child is None:
                 node.num_pixels_exclusive += 1
-                node.pixel_sums = tuple([node.pixel_sums[i] + pixel[i]
-                                         for i in range(3)])
-            else:
-                node.error += node.center_squared_distance_to(pixel)
+                node.pixel_sums = tuple(node.pixel_sums[i] + pixel[i]
+                                        for i in COMPONENTS)
             node = child
     return tree
 
@@ -157,16 +155,12 @@ def _assign(rgb_tuples, tree):
     """Use octree to assign the image's colour to quantized colours."""
     colour_list = []
     node_to_index = {}
-    nodes = [tree]
-    while len(nodes) > 0:
-        node = nodes.pop()
+    for node in all_nodes(tree):
         if node.num_pixels_exclusive > 0:
             mean_col = tuple(node.pixel_sums[i] / node.num_pixels_exclusive
-                             for i in range(3))
+                             for i in COMPONENTS)
             colour_list.append(mean_col)
             node_to_index[node] = len(colour_list) - 1
-        for child in node.children:
-            nodes.append(child)
 
     # for each pixel, find deepest code containing its colour
     colour_map = {}  # (r, g, b) -> index in colour table
