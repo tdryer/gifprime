@@ -13,7 +13,7 @@ class LazyFrames(object):
     def __init__(self, gif):
         self.gif = gif
         self.surfaces = {}
-        self.current = None
+        self.current = 0
         self.shown_count = 0
 
     def get_surface(self, i):
@@ -29,37 +29,34 @@ class LazyFrames(object):
 
     def has_next(self):
         """Returns True iff. there is a next frame."""
-        if self.current is None or self.gif.loop_count == 0:
+        if self.gif.loop_count == 0:
             return True
         else:
-            num_loop = self.shown_count / len(self.gif.images)
-            return not num_loop == self.gif.loop_count
+            is_last_loop = self.loop_count == self.gif.loop_count - 1
+            is_last_frame = self.current == len(self.gif.images) - 1
+            return not (is_last_loop and is_last_frame)
 
     def next(self):
-        """Returns the next (surface, delay)."""
-        if self.current is None:
-            self.current = -1
-
+        """Advance to the next frame."""
         self.shown_count += 1
         self.current = (self.current + 1) % len(self.gif.images)
-        return self.get_surface(self.current)
 
     def has_prev(self):
         """Returns True iff. there is a previous frame."""
-        if self.current is None or self.gif.loop_count == 0:
-            return True
-        else:
-            num_loop = -self.shown_count / len(self.gif.images)
-            return not num_loop == self.gif.loop_count
+        return self.shown_count > 0
 
     def prev(self):
-        """Returns the previous (surface, delay)."""
-        if self.current is None:
-            self.current = len(self.gif.images)
-
+        """Move to the previous frame."""
         self.shown_count -= 1
         self.current = (self.current - 1) % len(self.gif.images)
+
+    @property
+    def current_frame(self):
         return self.get_surface(self.current)
+
+    @property
+    def loop_count(self):
+        return self.shown_count / len(self.gif.images)
 
 
 class GIFViewer(object):
@@ -81,8 +78,8 @@ class GIFViewer(object):
         self.bg_surface = pygame.image.load('background.png')
         self.font = pygame.font.Font(pygame.font.get_default_font(), 14)
         self.frames = LazyFrames(gif)
-        self.frame_delay = 0
         self.current_frame = None
+        self.frame_delay = 0
         self.ms_since_last_frame = 0
         self.info_lines = None
 
@@ -106,11 +103,15 @@ class GIFViewer(object):
 
     def show_next_frame(self, backwards=False):
         """Switch to the next frame, or do nothing if there isn't one."""
-        if not backwards and self.frames.has_next():
-            self.current_frame, self.frame_delay = self.frames.next()
+        if self.current_frame is None:
+            self.current_frame, self.frame_delay = self.frames.current_frame
+        elif not backwards and self.frames.has_next():
+            self.frames.next()
+            self.current_frame, self.frame_delay = self.frames.current_frame
             self.ms_since_last_frame = 0
         elif backwards and self.frames.has_prev():
-            self.current_frame, self.frame_delay = self.frames.prev()
+            self.frames.prev()
+            self.current_frame, self.frame_delay = self.frames.current_frame
             self.ms_since_last_frame = 0
 
     def handle_events(self):
