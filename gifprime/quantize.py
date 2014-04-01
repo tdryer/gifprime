@@ -125,9 +125,14 @@ def _classify(rgb_tuples):
 
 def _reduce(tree, max_colours):
     """Reduce octree until it contains fewer than max_colours colours."""
+    # do an initial count of the number of colours to find out if we need to
+    # reduce at all
+    num_colours = len(list(node for node in all_nodes(tree)
+                           if node.num_pixels_exclusive > 0))
     min_e = 0
-    while len(list(node for node in all_nodes(tree)
-                   if node.num_pixels_exclusive > 0)) > max_colours:
+    # continue reducing until the number of colours is low enough
+    while num_colours > max_colours:
+        num_colours = 0
         next_min_e = None
         nodes = [tree]
         while nodes:
@@ -135,7 +140,7 @@ def _reduce(tree, max_colours):
             next_min_e = (node.error
                           if next_min_e is None or node.error < next_min_e
                           else next_min_e)
-            assert node.error > 0, str(node)
+            assert node.error > 0
             # iterate over COPY of the list
             for child in list(node.children):
                 # prune the nodes with the MINIMUM error
@@ -143,6 +148,8 @@ def _reduce(tree, max_colours):
                     node.prune(child)
                 else:
                     nodes.append(child)
+            if node.num_pixels_exclusive > 0:
+                num_colours += 1
         min_e = next_min_e
 
 
