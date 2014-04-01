@@ -157,14 +157,11 @@ class GIFViewer(object):
                               '(reversed)' if self.is_reversed else '',
                               '(rescaled)' if self.is_scaled else ''),
             'size: {}x{}'.format(self.gif.size[0], self.gif.size[1]),
-            'number of frames: {}'.format(len(self.gif.images)),
-            'number of loops: {}'.format(
-                self.gif.loop_count if self.gif.loop_count != 0
-                else 'infinite'
-            ),
-            'current loop: {}'.format(self.frames.loop_count),
-            'current frame: {}'.format(self.frames.current),
-            'current frame delay: {} ms'.format(self.frame_delay),
+            'loop: {} / {}'.format(self.frames.loop_count + 1,
+                                   self.gif.loop_count or 'infinite'),
+            'frame: {} / {} ({} ms delay)'.format(self.frames.current + 1,
+                                                  len(self.gif.images),
+                                                  self.frame_delay),
             'file: {}'.format(self.gif.filename),
         ]
 
