@@ -2,7 +2,7 @@
 
 import pygame
 
-from gifprime.util import readable_size
+from gifprime.util import readable_size, static_path
 
 
 pygame.init()
@@ -78,7 +78,7 @@ class GIFViewer(object):
         self.is_showing_info = False
 
         self.bg_surface = pygame.image.load('background.png')
-        self.font = pygame.font.Font(pygame.font.get_default_font(), 14)
+        self.font = pygame.font.Font(static_path('DroidSansMono.ttf'), 14)
         self.frames = LazyFrames(gif)
         self.current_frame = None
         self.frame_delay = 0
