@@ -19,13 +19,3 @@ def test_decompress_5pixels():
 
 def test_compress_5pixels():
     assert ''.join(lzw.compress('\x00\x01\x01\x01\x01', 2)) == 'D\x1e\x05'
-
-
-def test_CodeStream():
-    cs = lzw.CodeStream(bitarray.bitarray('0000110000000100').tobytes())
-    assert cs.get(3) == 4
-    assert cs.get(4) == 1
-    assert cs.get(5) == 8
-    assert not cs.empty()
-    assert cs.get(4) == 0
-    assert cs.empty()

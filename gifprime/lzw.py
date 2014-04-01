@@ -66,36 +66,6 @@ class LZWCompressionTable(LZWDecompressionTable):
         self.next_code += 1
 
 
-class CodeStream(object):
-    """Unpacker for code stream with variable bit lengths.
-
-    The code stream is assumed to be little-endian.
-    """
-
-    def __init__(self, data):
-        self.bits = bitarray.bitarray(endian='little')
-        self.bits.frombytes(data)
-        self.pos = 0
-
-    def get(self, size):
-        """Returns the next integer code using size bits."""
-        code = self.bitlist_to_int(self.bits[self.pos:self.pos + size])
-        self.pos += size
-        return code
-
-    @staticmethod
-    def bitlist_to_int(bitlist):
-        """Convert list of bits to integer."""
-        out = 0
-        for bit in reversed(bitlist):
-            out = (out << 1) | bit
-        return out
-
-    def empty(self):
-        """Return true if the end of the code stream has been reached."""
-        return self.pos >= len(self.bits)
-
-
 def compress(data, lzw_min, max_code_size=12):
     """Return compressed data using LZW."""
     table = LZWCompressionTable(lzw_min)
@@ -134,11 +104,16 @@ def compress(data, lzw_min, max_code_size=12):
 def decompress(data, lzw_min, max_code_size=12):
     """Generate decompressed data using LZW."""
     table = LZWDecompressionTable(lzw_min)
-    stream = CodeStream(data)
+    codes = bitarray.bitarray(endian='little')
+    codes.frombytes(data)
+    pos = 0
+    length = codes.length()
 
     prev = None
     while True:
-        code = stream.get(min(table.next_code_size, max_code_size))
+        code_size = min(table.next_code_size, max_code_size)
+        code = int(codes[pos:pos + code_size].to01()[::-1], 2)
+        pos += code_size
 
         if code == table.end_code:
             break
@@ -146,7 +121,7 @@ def decompress(data, lzw_min, max_code_size=12):
             table.reinitialize()
             prev = None
             continue
-        elif stream.empty():
+        elif pos >= length - 1:
             raise ValueError('Reached end of stream without END code')
         elif code in table:
             yield table.get(code)
