@@ -2,7 +2,6 @@
 
 import math
 import bitarray
-import bitstring
 
 __all__ = ['compress', 'decompress']
 
@@ -98,7 +97,7 @@ class CodeStream(object):
 
 
 def compress(data, lzw_min, max_code_size=12):
-    """Generate compressed data using LZW."""
+    """Return compressed data using LZW."""
     table = LZWCompressionTable(lzw_min)
 
     def _compress():
@@ -125,16 +124,11 @@ def compress(data, lzw_min, max_code_size=12):
         yield table.get(table.end_code)
 
     # Pack variably-sized codes into bytes
-    remainder = bitstring.BitArray()
+    codes = bitarray.bitarray(endian='little')
     for code in _compress():
-        size = table.code_size
-        remainder.prepend(bitstring.BitArray(uint=code, length=size))
-
-    # TODO: Maybe there's a nice way to incorporate this with the previous
-    #       loop.
-    while len(remainder) > 0:
-        yield chr(remainder[-8:].uint)
-        del remainder[-8:]
+        # Convert code to bits, and append it
+        codes.extend(bin(code)[2:].rjust(table.code_size, '0')[::-1])
+    return codes.tobytes()
 
 
 def decompress(data, lzw_min, max_code_size=12):

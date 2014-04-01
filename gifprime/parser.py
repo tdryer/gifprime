@@ -60,7 +60,7 @@ class LzwAdapter(construct.Adapter):
     """
 
     def _encode(self, obj, context):
-        return ''.join(gifprime.lzw.compress(obj, context.lzw_min))
+        return gifprime.lzw.compress(obj, context.lzw_min)
 
     def _decode(self, obj, context):
         return ''.join(gifprime.lzw.decompress(obj, context.lzw_min))
