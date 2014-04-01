@@ -43,6 +43,8 @@ def parse_args():
     encoder = subparser.add_parser('encode', help='create a gif')
     encoder.add_argument('images', nargs='+', help='image frame for gif')
     encoder.add_argument('--output', '-o', help='output filename')
+    encoder.add_argument('--delay', '-d', default=1000, type=int,
+                         help='frame delay in ms')
     encoder.add_argument('--loop-count', '-l', default=0, type=int,
                          help='0 for infinite (default)')
     encoder.set_defaults(command='encode')
@@ -74,7 +76,7 @@ def run_encoder(args):
         raw_size = json.loads(run('exiftool -j {}', filepath))[0]['ImageSize']
         size = [int(value) for value in raw_size.split('x')]
 
-        gif.images.append(Image(rgba_data, size, 1000))
+        gif.images.append(Image(rgba_data, size, args.delay))
 
     gif.size = size
     gif.loop_count = args.loop_count
