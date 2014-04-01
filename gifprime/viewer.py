@@ -77,7 +77,7 @@ class GIFViewer(object):
         self.is_exiting = False
         self.is_showing_info = False
 
-        self.bg_surface = pygame.image.load('background.png')
+        self.bg_surface = pygame.image.load(static_path('background.png'))
         self.font = pygame.font.Font(static_path('DroidSansMono.ttf'), 14)
         self.frames = LazyFrames(gif)
         self.current_frame = None
