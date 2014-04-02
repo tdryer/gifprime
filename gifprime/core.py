@@ -57,18 +57,18 @@ class GIF(object):
     """A GIF image or animation."""
 
     @classmethod
-    def from_file(cls, filename):
+    def from_file(cls, filename, **kwargs):
         with open(filename, 'rb') as file_:
             data_stream = file_.read()
-        return cls(data_stream, filename)
+        return cls(data_stream, filename, **kwargs)
 
     @classmethod
-    def from_url(cls, url):
+    def from_url(cls, url, **kwargs):
         response = requests.get(url)
         assert response.headers['content-type'] == 'image/gif', 'must be a gif'
-        return cls(response.content, response.url.rsplit('/', 1)[-1])
+        return cls(response.content, response.url.rsplit('/', 1)[-1], **kwargs)
 
-    def __init__(self, data_stream='', filename=None):
+    def __init__(self, data_stream='', filename=None, deinterlace=None):
         """Create a new GIF or decode one from a file."""
         self.images = []
         self.comment = None
@@ -130,7 +130,9 @@ class GIF(object):
                         disposal_method = 0
 
                     # de-interlace the colour indices if necessary
-                    if block.image_descriptor.interlace_flag:
+                    if (deinterlace is None
+                            and block.image_descriptor.interlace_flag
+                            or deinterlace):
                         indices = self._de_interlace(
                             block.pixels,
                             block.image_descriptor.height,

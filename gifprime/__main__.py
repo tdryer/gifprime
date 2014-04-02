@@ -50,6 +50,8 @@ def parse_args():
     # Decoder
     decoder = subparser.add_parser('decode', help='view a gif')
     decoder.add_argument('filename')
+    decoder.add_argument('--deinterlace', '-d', help='force deinterlacing',
+                         choices=['auto', 'on', 'off'], default='auto')
     decoder.set_defaults(command='decode')
 
     # Reddit Decoder
@@ -82,7 +84,11 @@ def run_encoder(args):
 
 def run_decoder(args):
     """Decode GIF by opening it with the viewer."""
-    show_gif(args.filename, benchmark=args.time)
+    if args.deinterlace == 'auto':
+        show_gif(args.filename, benchmark=args.time)
+    else:
+        show_gif(args.filename, benchmark=args.time,
+                 deinterlace=args.deinterlace == 'on')
 
 
 def run_reddit(args):
@@ -95,15 +101,15 @@ def run_reddit(args):
     show_gif(post.url, benchmark=args.time)
 
 
-def show_gif(uri, benchmark=False):
+def show_gif(uri, benchmark=False, deinterlace=None):
     """Open a file or URL in the viewer."""
     if uri.startswith('http'):
         print 'Downloading...'
-        gif = GIF.from_url(uri)
+        gif = GIF.from_url(uri, deinterlace=deinterlace)
     elif os.path.isfile(uri):
         print 'Loading...'
         with measure_time('decode', benchmark):
-            gif = GIF.from_file(uri)
+            gif = GIF.from_file(uri, deinterlace=deinterlace)
     else:
         assert False, 'Expected a filename or URL'
 
