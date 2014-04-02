@@ -129,12 +129,23 @@ class GIF(object):
                         delay_ms = 0
                         disposal_method = 0
 
-                    indexes = block.pixels
+                    # de-interlace the colour indices if necessary
+                    if block.image_descriptor.interlace_flag:
+                        indices = self._de_interlace(
+                            block.pixels,
+                            block.image_descriptor.height,
+                            block.image_descriptor.width,
+                        )
+                    else:
+                        indices = block.pixels
+
+                    # interpret colour indices
                     rgba_data = [
                         tuple(active_colour_table[i]) +
                         ((0,) if i == trans_index else (255,))
-                        for i in indexes
+                        for i in indices
                     ]
+
                     image_size = (block.image_descriptor.width,
                                   block.image_descriptor.height)
                     image_pos = (block.image_descriptor.left,
@@ -191,6 +202,21 @@ class GIF(object):
 
         self.compressed_size = len(data_stream)
         self.uncompressed_size = sum(len(i.rgba_data) for i in self.images)
+
+    @staticmethod
+    def _de_interlace(indices, height, width):
+        rows = itertools.chain(
+            xrange(0, height, 8),
+            xrange(4, height, 8),
+            xrange(2, height, 4),
+            xrange(1, height, 2),
+        )
+        ordered = sorted(((row, i) for i, row in enumerate(rows)),
+                         key=lambda e: e[0])
+
+        for _, row in ordered:
+            for index in indices[row * width:(row + 1) * width]:
+                yield index
 
     def save(self, file_):
         """Encode a GIF and save it to a file."""
