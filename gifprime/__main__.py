@@ -1,10 +1,8 @@
 """Main entry point for gifprime."""
 
+from PIL import Image as PILImage
 from argparse import ArgumentParser
 from contextlib import contextmanager
-from subprocess import check_output
-import construct
-import json
 import os
 import praw
 import requests
@@ -64,21 +62,15 @@ def parse_args():
 
 def run_encoder(args):
     """Encode new GIF and open it in the viewer."""
-    run = lambda cmd, *args: check_output(cmd.format(*args).split(' '))
     gif = GIF()
 
     for filepath in args.images:
-        rgba = run('convert -alpha on {} rgba:-', filepath)
-        rgba_data = [tuple(col) for col in construct.Array(
-            lambda ctx: len(rgba) / 4,
-            construct.Array(4, construct.ULInt8('col')),
-        ).parse(rgba)]
-        raw_size = json.loads(run('exiftool -j {}', filepath))[0]['ImageSize']
-        size = [int(value) for value in raw_size.split('x')]
+        image = PILImage.open(filepath).convert('RGBA')
+        rgba = image.tobytes()
+        rgba_data = zip(*[(ord(c) for c in rgba)] * 4)
+        gif.images.append(Image(rgba_data, image.size, args.delay))
 
-        gif.images.append(Image(rgba_data, size, args.delay))
-
-    gif.size = size
+    gif.size = image.size
     gif.loop_count = args.loop_count
 
     with open(args.output, 'wb') as file_:
