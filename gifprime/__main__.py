@@ -3,8 +3,10 @@
 from PIL import Image as PILImage
 from argparse import ArgumentParser
 from contextlib import contextmanager
+import itertools
 import os
 import praw
+import random
 import requests
 import time
 
@@ -57,6 +59,8 @@ def parse_args():
     # Reddit Decoder
     reddit = subparser.add_parser('reddit', help='get a gif from reddit')
     reddit.add_argument('--subreddit', '-s', default='gifs')
+    reddit.add_argument('--retries', '-r', type=int, default=10,
+                        help='number of reddit submissions to try')
     reddit.set_defaults(command='reddit')
 
     return parser.parse_args()
@@ -94,11 +98,27 @@ def run_decoder(args):
 def run_reddit(args):
     """Grab a random GIF from reddit."""
     client = praw.Reddit(user_agent='gifprime')
-    post = client.get_random_submission(subreddit=args.subreddit)
-    num_bytes = int(requests.head(post.url).headers['content-length'])
+    subreddit = client.get_subreddit(args.subreddit)
 
-    print 'Found one! "{}", {}'.format(post.title, readable_size(num_bytes))
-    show_gif(post.url, benchmark=args.time)
+    posts = list(itertools.islice(subreddit.search('url:.gif$'), args.retries))
+    random.shuffle(posts)
+
+    for post in posts:
+        try:
+            response = requests.head(post.url)
+        except requests.ConnectionError:
+            continue
+
+        if (response.status_code == 200
+                and response.headers['content-type'] == 'image/gif'):
+            num_bytes = int(response.headers['content-length'])
+            print 'Found one! "{}", {} - {}'.format(post.title,
+                                                    readable_size(num_bytes),
+                                                    post.url)
+            show_gif(post.url, benchmark=args.time)
+            break
+    else:
+        print 'Unable to find a GIF'
 
 
 def show_gif(uri, benchmark=False, deinterlace=None):
