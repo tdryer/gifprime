@@ -47,8 +47,6 @@ class Image(object):
     def __init__(self, rgba_data, size, delay_ms):
         self.size = size
         self.rgba_data = rgba_data
-        # animation properties:
-        self.user_input_flag = False
         # number of milliseconds to show this frame, or 0 if not set
         self.delay_ms = delay_ms
 
