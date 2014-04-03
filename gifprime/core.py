@@ -68,7 +68,7 @@ class GIF(object):
         assert response.headers['content-type'] == 'image/gif', 'must be a gif'
         return cls(response.content, response.url.rsplit('/', 1)[-1], **kwargs)
 
-    def __init__(self, data_stream='', filename=None, deinterlace=None):
+    def __init__(self, data_stream='', filename=None, force_deinterlace=None):
         """Create a new GIF or decode one from a file."""
         self.images = []
         self.comment = None
@@ -129,10 +129,14 @@ class GIF(object):
                         delay_ms = 0
                         disposal_method = 0
 
+                    # if not specified, deinterlace the images only if necessary
+                    if force_deinterlace is None:
+                        deinterlace = block.image_descriptor.interlace_flag
+                    else:
+                        deinterlace = force_deinterlace
+
                     # de-interlace the colour indices if necessary
-                    if (deinterlace is None
-                            and block.image_descriptor.interlace_flag
-                            or deinterlace):
+                    if deinterlace:
                         indices = self._de_interlace(
                             block.pixels,
                             block.image_descriptor.height,

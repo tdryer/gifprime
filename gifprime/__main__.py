@@ -92,7 +92,7 @@ def run_decoder(args):
         show_gif(args.filename, benchmark=args.time)
     else:
         show_gif(args.filename, benchmark=args.time,
-                 deinterlace=args.deinterlace == 'on')
+                 force_deinterlace=args.deinterlace == 'on')
 
 
 def run_reddit(args):
@@ -121,15 +121,15 @@ def run_reddit(args):
         print 'Unable to find a GIF'
 
 
-def show_gif(uri, benchmark=False, deinterlace=None):
+def show_gif(uri, benchmark=False, force_deinterlace=None):
     """Open a file or URL in the viewer."""
     if uri.startswith('http'):
         print 'Downloading...'
-        gif = GIF.from_url(uri, deinterlace=deinterlace)
+        gif = GIF.from_url(uri, force_deinterlace=force_deinterlace)
     elif os.path.isfile(uri):
         print 'Loading...'
         with measure_time('decode', benchmark):
-            gif = GIF.from_file(uri, deinterlace=deinterlace)
+            gif = GIF.from_file(uri, force_deinterlace=force_deinterlace)
     else:
         assert False, 'Expected a filename or URL'
 
