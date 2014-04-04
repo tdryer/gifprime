@@ -122,6 +122,13 @@ _gce_extension = construct.Struct(
 )
 
 
+_unknown_extension = construct.Struct(
+    'unknown_extension',
+    construct.Value('block_type', lambda ctx: 'unknown'),
+    DataSubBlocks('unknown_data'),
+)
+
+
 _logical_screen_descriptor = construct.Struct(
     'logical_screen_descriptor',
     construct.ULInt16('logical_width'),
@@ -172,6 +179,7 @@ gif = construct.Struct(
                                         0xFE: _comment_extension,
                                         0xF9: _gce_extension,
                                     },
+                                    default = _unknown_extension,
                                 ),
                             ),
                         ),

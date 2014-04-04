@@ -203,6 +203,9 @@ class GIF(object):
                     else:
                         print ('Found unknown app extension: {}'
                                .format((block.app_id, block.app_auth_code)))
+                else:
+                    print ('Found unknown extension block: {}'
+                           .format(hex(block.ext_label)))
 
         self.compressed_size = len(data_stream)
         self.uncompressed_size = sum(len(i.rgba_data) for i in self.images)

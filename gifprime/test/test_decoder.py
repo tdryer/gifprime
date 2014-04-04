@@ -82,6 +82,7 @@ def load_reference_gif(filename):
     'transparent_blit.gif',
     'requires_clear_code.gif',
     'interlaced.gif',
+    'unknown_extension.gif',
 ])
 def test_gif_decode(name):
     """Decode GIF and compare it to reference decoding."""
