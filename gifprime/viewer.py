@@ -1,12 +1,15 @@
 """Graphical user interface for viewing GIF animations."""
 
 import pygame
+import multiprocessing
+import multiprocessing.pool
 
 from gifprime.util import readable_size, static_path
 
 
 pygame.init()
 pygame.font.init()
+POOL = multiprocessing.pool.ThreadPool(processes=1)
 
 
 class LazyFrames(object):
@@ -67,10 +70,11 @@ class GIFViewer(object):
     # minimum size that the window will open at
     MIN_SIZE = (400, 250)
 
-    def __init__(self, gif, fps=60):
-        self.gif = gif
+    def __init__(self, load_gif_f, fps=60):
+        self.gif = None
         self.fps = fps
 
+        self.is_loading = True
         self.is_playing = True
         self.is_reversed = False
         self.is_scaled = False
@@ -79,22 +83,44 @@ class GIFViewer(object):
 
         self.bg_surface = pygame.image.load(static_path('background.png'))
         self.font = pygame.font.Font(static_path('DroidSansMono.ttf'), 14)
-        self.frames = LazyFrames(gif)
+        self.frames = None
         self.current_frame = None
         self.frame_delay = 0
         self.ms_since_last_frame = 0
         self.info_lines = None
 
-        # Set window size to minimum or large enough to show the gif
-        self.size = (max(self.MIN_SIZE[0], self.gif.size[0]),
-                     max(self.MIN_SIZE[1], self.gif.size[1]))
-
         # Setup pygame stuff
-        filename = gif.filename.split('/')[-1]
-        pygame.display.set_caption('{} - gifprime'.format(filename))
+        self.size = self.MIN_SIZE
+        self.set_title()
         self.screen = None
         self.set_screen()
         self.clock = pygame.time.Clock()
+
+        self.async_result = POOL.apply_async(load_gif_f)
+
+    def check_loading(self):
+        """Check if the gif has finished loading."""
+        try:
+            # TODO: error handling
+            gif = self.async_result.get(False)
+        except multiprocessing.TimeoutError:
+            return
+        self.is_loading = False
+        self.gif = gif
+        self.frames = LazyFrames(gif)
+        self.set_title()
+        self.size = (max(self.MIN_SIZE[0], self.gif.size[0]),
+                     max(self.MIN_SIZE[1], self.gif.size[1]))
+        self.set_screen()
+
+    def set_title(self):
+        """Set the window title."""
+        if self.is_loading:
+            name = "Loading..."
+        else:
+            name = self.gif.filename.split('/')[-1]
+        pygame.display.set_caption('{} - gifprime'.format(name))
+
 
     def set_screen(self):
         """Set the video mode and self.screen.
@@ -105,6 +131,8 @@ class GIFViewer(object):
 
     def show_next_frame(self, backwards=False):
         """Switch to the next frame, or do nothing if there isn't one."""
+        if self.is_loading:
+            return
         if self.current_frame is None:
             self.current_frame, self.frame_delay = self.frames.current_frame
         elif not backwards and self.frames.has_next():
@@ -147,6 +175,9 @@ class GIFViewer(object):
                     # toggle showing info
                     self.is_showing_info = not self.is_showing_info
 
+    def update_loading(self, elapsed):
+        pass
+
     def update(self, elapsed):
         """Update the animation state."""
         if self.is_playing:
@@ -170,6 +201,10 @@ class GIFViewer(object):
                 readable_size(self.gif.uncompressed_size),
             ),
         ]
+
+    def draw_loading(self):
+        self.screen.fill((220, 220, 220))
+        pygame.display.flip()
 
     def draw(self):
         """Draw the current animation state."""
@@ -233,7 +268,12 @@ class GIFViewer(object):
         while not self.is_exiting:
             elapsed = pygame.time.get_ticks() - now
             now = pygame.time.get_ticks()
-            self.update(elapsed)
-            self.draw()
+            if not self.is_loading:
+                self.update(elapsed)
+                self.draw()
+            else:
+                self.update_loading(elapsed)
+                self.draw_loading()
+                self.check_loading()
             self.handle_events()
             self.clock.tick(self.fps)

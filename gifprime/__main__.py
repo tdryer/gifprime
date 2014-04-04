@@ -120,20 +120,18 @@ def run_reddit(args):
     else:
         print 'Unable to find a GIF'
 
-
 def show_gif(uri, benchmark=False, force_deinterlace=None):
     """Open a file or URL in the viewer."""
-    if uri.startswith('http'):
-        print 'Downloading...'
-        gif = GIF.from_url(uri, force_deinterlace=force_deinterlace)
-    elif os.path.isfile(uri):
-        print 'Loading...'
+    def load_gif_f():
         with measure_time('decode', benchmark):
-            gif = GIF.from_file(uri, force_deinterlace=force_deinterlace)
-    else:
-        assert False, 'Expected a filename or URL'
+            if uri.startswith('http'):
+                return GIF.from_url(uri, force_deinterlace=force_deinterlace)
+            elif os.path.isfile(uri):
+                return GIF.from_file(uri, force_deinterlace=force_deinterlace)
+            else:
+                raise ValueError('{} is not a filename or URL'.format(uri))
 
-    viewer = GIFViewer(gif)
+    viewer = GIFViewer(load_gif_f)
     viewer.show()
 
 
