@@ -253,7 +253,7 @@ class GIF(object):
             comment_containers = [
                 construct.Container(
                     block_type = 'comment',
-                    ext_intro = 0x21,
+                    block_start = 0x21,
                     ext_label = 0xFE,
                     comment = self.comment,
                 )
@@ -265,7 +265,7 @@ class GIF(object):
             [
                 construct.Container(
                     block_type = 'gce',
-                    ext_intro = 0x21,
+                    block_start = 0x21,
                     ext_label = 0xF9,
                     block_size = 4,
                     disposal_method = 0,
@@ -276,8 +276,8 @@ class GIF(object):
                     terminator = 0,
                 ),
                 construct.Container(
+                    block_start = 0x2C,
                     image_descriptor = construct.Container(
-                        img_sep = 0x2C,
                         left = 0,
                         top = 0,
                         width = image.size[0],
@@ -313,7 +313,7 @@ class GIF(object):
             app_ext_containers.append(
                 construct.Container(
                     block_type = 'application_extension',
-                    ext_intro = 0x21,
+                    block_start = 0x21,
                     ext_label = 0xFF,
                     block_size = 11,
                     app_id = 'NETSCAPE',
