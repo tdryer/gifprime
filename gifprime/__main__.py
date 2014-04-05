@@ -68,6 +68,9 @@ def parse_args():
 
 def run_encoder(args):
     """Encode new GIF and open it in the viewer."""
+    if args.output is None:
+        raise ValueError("Output argument is required")
+
     gif = GIF()
 
     for filepath in args.images:
@@ -83,16 +86,15 @@ def run_encoder(args):
         with measure_time('encode', args.time):
             gif.save(file_)
 
-    show_gif(args.output, benchmark=args.time)
+    return decode(args.output, benchmark=args.time)
 
 
 def run_decoder(args):
     """Decode GIF by opening it with the viewer."""
-    if args.deinterlace == 'auto':
-        show_gif(args.filename, benchmark=args.time)
-    else:
-        show_gif(args.filename, benchmark=args.time,
-                 force_deinterlace=args.deinterlace == 'on')
+    force_deinterlace = (None if args.deinterlace == 'auto'
+                         else args.deinterlace == 'on')
+    return decode(args.filename, benchmark=args.time,
+                  force_deinterlace=force_deinterlace)
 
 
 def run_reddit(args):
@@ -115,36 +117,52 @@ def run_reddit(args):
             print 'Found one! "{}", {} - {}'.format(post.title,
                                                     readable_size(num_bytes),
                                                     post.url)
-            show_gif(post.url, benchmark=args.time)
-            break
-    else:
-        print 'Unable to find a GIF'
+            return decode(post.url, benchmark=args.time)
+    raise ValueError('Unable to find GIF on reddit')
 
-def show_gif(uri, benchmark=False, force_deinterlace=None):
-    """Open a file or URL in the viewer."""
-    def load_gif_f():
-        with measure_time('decode', benchmark):
-            if uri.startswith('http'):
-                return GIF.from_url(uri, force_deinterlace=force_deinterlace)
-            elif os.path.isfile(uri):
-                return GIF.from_file(uri, force_deinterlace=force_deinterlace)
-            else:
-                raise ValueError('{} is not a filename or URL'.format(uri))
 
-    viewer = GIFViewer(load_gif_f)
-    viewer.show()
+def decode(uri, benchmark=False, force_deinterlace=None):
+    """Given a URI, return a GIF."""
+    with measure_time('decode', benchmark):
+        if uri.startswith('http'):
+            return GIF.from_url(uri, force_deinterlace=force_deinterlace)
+        elif os.path.isfile(uri):
+            return GIF.from_file(uri, force_deinterlace=force_deinterlace)
+        else:
+            raise ValueError('{} is not a filename or URL'.format(uri))
+
+
+def print_exceptions(func):
+    """Wrapper for function to print any tracebacks.
+
+    This makes debugging easier when the function is to be run in a
+    multiprocessing pool.
+    """
+    def wrapped_func():
+        try:
+            return func()
+        except Exception as e:
+            import traceback, sys
+            print "".join(traceback.format_exception(*sys.exc_info()))
+            raise e
+    return wrapped_func
 
 
 def main():
     """Main entry point."""
     args = parse_args()
 
+    # get a function that returns a gif
     if args.command == 'encode':
-        run_encoder(args)
+        load_gif_f = lambda: run_encoder(args)
     elif args.command == 'decode':
-        run_decoder(args)
+        load_gif_f = lambda: run_decoder(args)
     elif args.command == 'reddit':
-        run_reddit(args)
+        load_gif_f = lambda: run_reddit(args)
+
+    # give the function to the gui, which will run it asynchronously
+    viewer = GIFViewer(print_exceptions(load_gif_f))
+    viewer.show()
 
 
 if __name__ == '__main__':
