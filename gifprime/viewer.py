@@ -3,6 +3,7 @@
 import pygame
 import multiprocessing
 import multiprocessing.pool
+from math import cos, sin, pi
 
 from gifprime.util import readable_size, static_path
 
@@ -88,6 +89,7 @@ class GIFViewer(object):
         self.frame_delay = 0
         self.ms_since_last_frame = 0
         self.info_lines = None
+        self.loading_elapsed = 0
 
         # Setup pygame stuff
         self.size = self.MIN_SIZE
@@ -116,7 +118,7 @@ class GIFViewer(object):
     def set_title(self):
         """Set the window title."""
         if self.is_loading:
-            name = "Loading..."
+            name = "Loading"
         else:
             name = self.gif.filename.split('/')[-1]
         pygame.display.set_caption('{} - gifprime'.format(name))
@@ -176,7 +178,7 @@ class GIFViewer(object):
                     self.is_showing_info = not self.is_showing_info
 
     def update_loading(self, elapsed):
-        pass
+        self.loading_elapsed += elapsed
 
     def update(self, elapsed):
         """Update the animation state."""
@@ -203,7 +205,24 @@ class GIFViewer(object):
         ]
 
     def draw_loading(self):
+        """Draw the loading screen."""
         self.screen.fill((220, 220, 220))
+
+        angle = self.loading_elapsed / 500.0 * pi
+        scale = 20 + 10 * sin(self.loading_elapsed / 500.0 * pi)
+        def _translate(tx, ty, point_list):
+            return ((tx + x, ty + y) for x, y in point_list)
+        def _scale(sx, sy, point_list):
+            return ((sx * x, sy * y) for x, y in point_list)
+        def _rotate(angle, point_list):
+            return ((x * cos(angle) - y * sin(angle),
+                     x * sin(angle) + y * cos(angle)) for x, y in point_list)
+        square = [(-0.5, -0.5), (0.5, -0.5), (0.5, 0.5), (-0.5, 0.5)]
+        square = _rotate(angle, square)
+        square = _scale(scale, scale, square)
+        square = _translate(self.size[0] / 2, self.size[1] / 2, square)
+        pygame.draw.aalines(self.screen, (0, 0, 0), True, list(square))
+
         pygame.display.flip()
 
     def draw(self):
