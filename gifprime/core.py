@@ -6,6 +6,7 @@ import requests
 
 import gifprime.parser
 from gifprime.quantize import quantize
+from gifprime.rgbaarray import RGBAArray
 
 
 def flatten(lst):
@@ -23,7 +24,7 @@ def blit_rgba(source, source_size, pos, dest, dest_size, transparency=True):
     """
     window_x = (pos[0], pos[0] + source_size[0])
     window_y = (pos[1], pos[1] + source_size[1])
-    res = []
+    res = RGBAArray()
     for y in xrange(dest_size[1]):
         for x in xrange(dest_size[0]):
             source_x = x - pos[0]
@@ -154,11 +155,11 @@ class GIF(object):
                         indices = block.pixels
 
                     # interpret colour indices
-                    rgba_data = [
+                    rgba_data = RGBAArray(
                         tuple(active_colour_table[i]) +
                         ((0,) if i == trans_index else (255,))
                         for i in indices
-                    ]
+                    )
 
                     image_size = (block.image_descriptor.width,
                                   block.image_descriptor.height)
