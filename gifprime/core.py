@@ -235,8 +235,8 @@ class GIF(object):
             for index in indices[row * width:(row + 1) * width]:
                 yield index
 
-    def save(self, file_):
-        """Encode a GIF and save it to a file."""
+    def save(self, stream):
+        """Encode GIF to a file-like object."""
         # create one list of pixels and alpha mask for all images
         alpha_mask = flatten([a != 255 for r, g, b, a in img.rgba_data]
                              for img in self.images)
@@ -339,7 +339,7 @@ class GIF(object):
         trailer = [construct.Container(block_start = 0x3B,
                                        terminator = 'terminator')]
 
-        gif = gifprime.parser.gif.build(construct.Container(
+        gif = gifprime.parser.gif.build_stream(construct.Container(
             magic = 'GIF89a',
             logical_screen_descriptor = construct.Container(
                 logical_width = self.size[0],
@@ -354,5 +354,4 @@ class GIF(object):
             gct = colour_table,
             body = (comment_containers + image_containers + app_ext_containers
                     + trailer),
-        ))
-        file_.write(gif)
+        ), stream)
