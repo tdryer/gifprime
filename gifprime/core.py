@@ -22,25 +22,31 @@ def blit_rgba(source, source_size, pos, dest, dest_size, transparency=True):
 
     If transparency is False, blitting a transparent pixel will overwrite the
     pixel under it with transparency.
+
+    This is an attempt at an optimized implementation. The conditionals are
+    ordered to take advantage of short-circuiting.
     """
-    window_x = (pos[0], pos[0] + source_size[0])
-    window_y = (pos[1], pos[1] + source_size[1])
-    res = []
-    for y in xrange(dest_size[1]):
-        for x in xrange(dest_size[0]):
-            source_x = x - pos[0]
-            source_y = y - pos[1]
-            dest_pix = dest[y * dest_size[0] + x]
-            if source_x >= 0 and source_x < source_size[0] and \
-                    source_y >= 0 and source_y < source_size[1]:
-                source_pix = source[source_y * source_size[0] + source_x]
-                if transparency and source_pix[3] != 255:
-                    res.append(dest_pix)
-                else:
-                    res.append(source_pix)
-            else:
-                res.append(dest_pix)
-    return res
+    # if the source completely covers the destination, we don't have to check
+    # each time whether the current pixel is inside the source
+    full_coverage = pos == (0, 0) and source_size == dest_size
+
+    return [
+        # use source pixel
+        source[(y - pos[1]) * source_size[0] + (x - pos[0])]
+        # if ((full_coverage or pos_in_source) and not
+        #     (transp and source_is_transp))
+        if ((full_coverage or
+             (x >= pos[0] and y >= pos[1] and
+              x < pos[0] + source_size[0] and y < pos[1] + source_size[1]))
+            and not (
+                transparency and
+                source[(y - pos[1]) * source_size[0] + (x - pos[0])][3] != 255
+            ))
+        # else use dest pixel
+        else dest[y * dest_size[0] + x]
+        # for every (x, y) position
+        for y in xrange(dest_size[1]) for x in xrange(dest_size[0])
+    ]
 
 
 class Image(object):
