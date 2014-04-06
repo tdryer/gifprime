@@ -1,5 +1,8 @@
 """Construct-based parser for the GIF file format.
 
+Only uses constructs that don't require seeking, so we can parse streams that
+don't support it without buffering.
+
 Based on specifications:
 http://www.w3.org/Graphics/GIF/spec-gif89a.txt
 http://www.w3.org/Graphics/GIF/spec-gif87.txt
@@ -16,14 +19,14 @@ def DataSubBlocks(name):
     return construct.ExprAdapter(
         construct.Struct(
             name,
-            construct.OptionalGreedyRange(
+            construct.RepeatUntil(
+                lambda obj, ctx: obj.block_size == 0x00,
                 construct.Struct(
                     'blocks',
-                    construct.NoneOf(construct.ULInt8('block_size'), [0]),
+                    construct.ULInt8('block_size'),
                     construct.Bytes('data_values', lambda ctx: ctx.block_size),
                 ),
             ),
-            construct.Const(construct.ULInt8('terminator'), 0)
         ),
         # from comment string, build Containers
         encoder=lambda obj, ctx: construct.Container(
@@ -32,8 +35,7 @@ def DataSubBlocks(name):
                     block_size = len(chunk),
                     data_values = chunk,
                 ) for chunk in [obj[i:i+255] for i in xrange(0, len(obj), 255)]
-            ],
-            terminator = 0,
+            ] + [construct.Container(block_size = 0, data_values = '')],
         ),
         # from Containers, build comment string
         decoder=lambda obj, ctx: ''.join(dsb.data_values for dsb in obj.blocks),
@@ -56,6 +58,7 @@ class LzwAdapter(construct.Adapter):
 
 _image_block = construct.Struct(
     'image',
+    construct.Value('block_type', lambda ctx: 'image'),
     construct.Struct(
         'image_descriptor',
         construct.ULInt16('left'),
@@ -159,13 +162,20 @@ gif = construct.Struct(
     ),
     _logical_screen_descriptor,
     construct.If(lambda ctx: ctx.logical_screen_descriptor.gct_flag, _gct),
-    construct.GreedyRange(
+    construct.RepeatUntil(
+        lambda obj, ctx: obj.block_start == 0x3B,
         construct.Struct(
             'body',
             construct.ULInt8('block_start'),
             construct.Embedded(
                 construct.Switch('block', lambda ctx: ctx.block_start,
                     {
+                        0x3B: construct.Struct(
+                            # workaround for Pass not working
+                            'terminator',
+                            construct.Value('terminator',
+                                            lambda ctx: 'terminator'),
+                        ),
                         0x2C: _image_block,
                         0x21: construct.Struct(
                             'ext',
@@ -187,10 +197,6 @@ gif = construct.Struct(
                 ),
             ),
         ),
-    ),
-    construct.Const(
-        construct.ULInt8('trailer'),
-        0x3B,
     ),
     construct.Terminator,
 )

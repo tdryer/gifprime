@@ -56,18 +56,26 @@ class GIF(object):
 
     @classmethod
     def from_file(cls, filename, **kwargs):
-        with open(filename, 'rb') as file_:
-            data_stream = file_.read()
-        return cls(data_stream, filename, **kwargs)
+        """Load GIF from the given filename."""
+        with open(filename, 'rb') as stream:
+            return cls(stream, filename=filename, **kwargs)
 
     @classmethod
     def from_url(cls, url, **kwargs):
-        response = requests.get(url)
-        assert response.headers['content-type'] == 'image/gif', 'must be a gif'
-        return cls(response.content, response.url.rsplit('/', 1)[-1], **kwargs)
+        """Load GIF from the given URL."""
+        with tempfile.TemporaryFile() as stream:
 
-    def __init__(self, data_stream='', filename=None, force_deinterlace=None):
-        """Create a new GIF or decode one from a file."""
+            res = requests.get(url, stream=True)
+            if res.headers['content-type'] != 'image/gif':
+                raise ValueError('Content type is not image/gif: {}'.format(url))
+            return cls(res.raw, res.url.rsplit('/', 1)[-1], **kwargs)
+
+    def __init__(self, stream=None, filename=None, force_deinterlace=None):
+        """Create a new GIF or decode one from a file-like object.
+
+        filename is only used to optionally set the name of the file the GIF
+        was loaded from.
+        """
         self.images = []
         self.comment = None
         self.filename = filename
@@ -75,8 +83,8 @@ class GIF(object):
         # number of times to show the animation, or 0 to loop forever
         self.loop_count = 1
 
-        if data_stream:
-            parsed_data = gifprime.parser.gif.parse(data_stream)
+        if stream is not None:
+            parsed_data = gifprime.parser.gif.parse_stream(stream)
             lsd = parsed_data.logical_screen_descriptor
             self.size = (lsd.logical_width, lsd.logical_height)
 
@@ -100,7 +108,9 @@ class GIF(object):
             prev_state = [bg_colour] * (self.size[0] * self.size[1])
 
             for block in parsed_data.body:
-                if 'block_type' not in block:  # it's an image
+                if 'block_type' not in block:  # it's just the terminator
+                    pass
+                elif block.block_type == 'image':
 
                     lct = (block.lct if block.image_descriptor.lct_flag
                            else None)
@@ -207,7 +217,7 @@ class GIF(object):
                     print ('Found unknown extension block: {}'
                            .format(hex(block.ext_label)))
 
-        self.compressed_size = len(data_stream)
+        self.compressed_size = stream.tell() if stream is not None else 0
         self.uncompressed_size = sum(len(i.rgba_data) for i in self.images)
 
     @staticmethod
@@ -279,6 +289,7 @@ class GIF(object):
                     terminator = 0,
                 ),
                 construct.Container(
+                    block_type = 'image',
                     block_start = 0x2C,
                     image_descriptor = construct.Container(
                         left = 0,
@@ -325,6 +336,9 @@ class GIF(object):
                 )
             )
 
+        trailer = [construct.Container(block_start = 0x3B,
+                                       terminator = 'terminator')]
+
         gif = gifprime.parser.gif.build(construct.Container(
             magic = 'GIF89a',
             logical_screen_descriptor = construct.Container(
@@ -338,7 +352,7 @@ class GIF(object):
                 pixel_aspect = 0,
             ),
             gct = colour_table,
-            body = comment_containers + image_containers + app_ext_containers,
-            trailer = 0x3B,
+            body = (comment_containers + image_containers + app_ext_containers
+                    + trailer),
         ))
         file_.write(gif)
