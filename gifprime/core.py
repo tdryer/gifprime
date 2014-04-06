@@ -2,10 +2,12 @@ from math import log, ceil
 import construct
 import itertools
 import requests
+import struct
 
 
 import gifprime.parser
 from gifprime.quantize import quantize
+from gifprime import lzw
 
 
 def flatten(lst):
@@ -143,15 +145,19 @@ class GIF(object):
                     else:
                         deinterlace = force_deinterlace
 
+                    # get the decompressed colour indices
+                    indices_bytes = ''.join(lzw.decompress(
+                        block.compressed_indices, block.lzw_min))
+                    indices = struct.unpack('{}B'.format(len(indices_bytes)),
+                                            indices_bytes)
+
                     # de-interlace the colour indices if necessary
                     if deinterlace:
                         indices = self._de_interlace(
-                            block.pixels,
+                            indices,
                             block.image_descriptor.height,
                             block.image_descriptor.width,
                         )
-                    else:
-                        indices = block.pixels
 
                     # interpret colour indices
                     rgba_data = [
@@ -274,6 +280,8 @@ class GIF(object):
         else:
             comment_containers = []
 
+        lzw_min = max(2, int(log(len(colour_table), 2)))
+
         image_containers = flatten([
             [
                 construct.Container(
@@ -302,12 +310,12 @@ class GIF(object):
                         lct_size = 0,
                     ),
                     lct = None,
-                    lzw_min = max(2, int(log(len(colour_table), 2))),
-                    pixels = [
-                        colour_map[(r, g, b)] if a == 255
-                        else transparent_col_index
+                    lzw_min = lzw_min,
+                    compressed_indices = lzw.compress(''.join(
+                        chr(colour_map[(r, g, b)]) if a == 255
+                        else chr(transparent_col_index)
                         for r, g, b, a in image.rgba_data
-                    ],
+                    ), lzw_min),
                 ),
             ] for image in self.images
         ])

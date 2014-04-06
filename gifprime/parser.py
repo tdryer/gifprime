@@ -42,20 +42,6 @@ def DataSubBlocks(name):
     )
 
 
-class LzwAdapter(construct.Adapter):
-    """Adapter for LZW-compressed data.
-
-    Example:
-        LzwAdapter(Bytes('foo', 4))
-    """
-
-    def _encode(self, obj, context):
-        return gifprime.lzw.compress(obj, context.lzw_min)
-
-    def _decode(self, obj, context):
-        return ''.join(gifprime.lzw.decompress(obj, context.lzw_min))
-
-
 _image_block = construct.Struct(
     'image',
     construct.Value('block_type', lambda ctx: 'image'),
@@ -81,14 +67,7 @@ _image_block = construct.Struct(
         ),
     ),
     construct.ULInt8('lzw_min'),
-    construct.Tunnel(
-        LzwAdapter(DataSubBlocks('pixels')),
-        construct.Array(
-            lambda ctx: (ctx.image_descriptor.width *
-                         ctx.image_descriptor.height),
-            construct.ULInt8('index'),
-        ),
-    ),
+    DataSubBlocks('compressed_indices'),
 )
 
 
