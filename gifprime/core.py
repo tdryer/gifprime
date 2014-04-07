@@ -230,9 +230,14 @@ class GIF(object):
                                 construct.ULInt8('id'),
                                 construct.ULInt16('count'),
                             ).parse(block.app_data)
-                            assert contents.id == 1, 'Unknown NETSCAPE extension'
-                            self.loop_count = (contents.count + 1
-                                               if contents.count != 0 else 0)
+                            if contents.id == 1:
+                                self.loop_count = (
+                                    contents.count + 1 if contents.count != 0
+                                    else 0
+                                )
+                            else:
+                                print ('Found unknown NETSCAPE extension id: {}'
+                                       .format(contents.id))
                         else:
                             print ('Found unknown app extension: {}'
                                    .format((block.app_id, block.app_auth_code)))
