@@ -208,7 +208,9 @@ class GIF(object):
                             raise ValueError('Unknown disposal method: {}'
                                              .format(disposal_method))
 
-                        yield Image(new_state, image_size, delay_ms)
+                        image = Image(new_state, image_size, delay_ms)
+                        self.uncompressed_size += image_size[0] * image_size[1]
+                        yield image
 
                         # the GCE goes out of scope after being used once
                         active_gce = None
@@ -242,7 +244,7 @@ class GIF(object):
             self.images = LazyList(generate_images(), num_images)
 
         self.compressed_size = stream.tell() if stream is not None else 0
-        self.uncompressed_size = 1.0
+        self.uncompressed_size = 0
 
     @staticmethod
     def _de_interlace(indices, height, width):
