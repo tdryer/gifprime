@@ -1,6 +1,5 @@
 """Provides LZW compression and decompression."""
 
-import math
 import bitarray
 
 __all__ = ['compress', 'decompress']
@@ -37,12 +36,12 @@ class LZWDecompressionTable(object):
     @property
     def code_size(self):
         """Returns the # bits required to represent the largest code so far."""
-        return int(math.floor(math.log(self.next_code - 1, 2)) + 1)
+        return (self.next_code - 1).bit_length()
 
     @property
     def next_code_size(self):
         """Returns the # bits required to represent the next code."""
-        return int(math.floor(math.log(self.next_code, 2)) + 1)
+        return self.next_code.bit_length()
 
     def get(self, key):
         """Returns the code associated with key."""
