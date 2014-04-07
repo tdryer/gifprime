@@ -71,12 +71,10 @@ class GIF(object):
     @classmethod
     def from_url(cls, url, **kwargs):
         """Load GIF from the given URL."""
-        with tempfile.TemporaryFile() as stream:
-
-            res = requests.get(url, stream=True)
-            if res.headers['content-type'] != 'image/gif':
-                raise ValueError('Content type is not image/gif: {}'.format(url))
-            return cls(res.raw, res.url.rsplit('/', 1)[-1], **kwargs)
+        res = requests.get(url, stream=True)
+        if res.headers['content-type'] != 'image/gif':
+            raise ValueError('Content type is not image/gif: {}'.format(url))
+        return cls(res.raw, res.url.rsplit('/', 1)[-1], **kwargs)
 
     def __init__(self, stream=None, filename=None, force_deinterlace=None):
         """Create a new GIF or decode one from a file-like object.
