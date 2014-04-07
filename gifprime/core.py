@@ -1,3 +1,5 @@
+"""Core GIF class and read/write methods."""
+
 from math import log, ceil
 import construct
 import itertools
@@ -106,7 +108,7 @@ class GIF(object):
 
             if lsd.gct_flag:
                 gct = parsed_data.gct
-                # XXX Modern GIF implementations disregard the spec and use
+                # Modern GIF implementations disregard the spec and use
                 # transparency as the background colour. This is significant
                 # for the prev and bg disposal methods. The 'correct' code is
                 # commented out below:
@@ -114,7 +116,7 @@ class GIF(object):
                 bg_colour = (0, 0, 0, 0)
             else:
                 gct = None
-                # XXX: this spec is not clear on what this should be
+                # the spec does not define what this should be
                 bg_colour = (0, 0, 0, 255)
 
             def generate_images():
@@ -138,13 +140,16 @@ class GIF(object):
                         elif gct is not None:
                             active_colour_table = gct
                         else:
-                            raise NotImplementedError, (
-                                'TODO: supply a default colour table')
+                            # TODO: Spec says we can use a default colour table
+                            # in this case.
+                            raise NotImplementedError('No colour table')
 
                         # set transparency index
                         if active_gce is not None:
                             if active_gce.transparent_colour_flag:
-                                trans_index = active_gce.transparent_colour_index
+                                trans_index = (
+                                    active_gce.transparent_colour_index
+                                )
                             else:
                                 trans_index = None
                             delay_ms = active_gce.delay_time * 10
@@ -154,7 +159,8 @@ class GIF(object):
                             delay_ms = 0
                             disposal_method = 0
 
-                        # if not specified, deinterlace the images only if necessary
+                        # If not specified, deinterlace the images only if
+                        # necessary.
                         if force_deinterlace is None:
                             deinterlace = block.image_descriptor.interlace_flag
                         else:
@@ -163,8 +169,9 @@ class GIF(object):
                         # get the decompressed colour indices
                         indices_bytes = ''.join(lzw.decompress(
                             block.compressed_indices, block.lzw_min))
-                        indices = struct.unpack('{}B'.format(len(indices_bytes)),
-                                                indices_bytes)
+                        indices = struct.unpack(
+                            '{}B'.format(len(indices_bytes)), indices_bytes
+                        )
 
                         # de-interlace the colour indices if necessary
                         if deinterlace:
@@ -198,9 +205,10 @@ class GIF(object):
                             # restore the used area to the background colour
                             fill_rgba = ([bg_colour] *
                                          (image_size[0] * image_size[1]))
-                            prev_state = blit_rgba(fill_rgba, image_size,
-                                                   image_pos, new_state, self.size,
-                                                   transparency=False)
+                            prev_state = blit_rgba(
+                                fill_rgba, image_size, image_pos, new_state,
+                                self.size, transparency=False
+                            )
                         elif disposal_method == 3:
                             # disposal method is previous
                             # restore to previous frame after drawing on it
@@ -219,8 +227,8 @@ class GIF(object):
                     elif block.block_type == 'gce':
                         active_gce = block
                     elif block.block_type == 'comment':
-                        # If there are multiple comment blocks, we ignore all but
-                        # the last (this is unspecified behaviour).
+                        # If there are multiple comment blocks, we ignore all
+                        # but the last (this is unspecified behaviour).
                         self.comment = block.comment
                     elif block.block_type == 'application':
                         if (block.app_id == 'NETSCAPE' and
@@ -257,6 +265,7 @@ class GIF(object):
 
     @staticmethod
     def _de_interlace(indices, height, width):
+        """Reorder indices to remove interlacing."""
         rows = itertools.chain(
             xrange(0, height, 8),
             xrange(4, height, 8),

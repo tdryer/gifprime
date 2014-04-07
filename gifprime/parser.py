@@ -11,10 +11,8 @@ http://www.w3.org/Graphics/GIF/spec-gif87.txt
 
 import construct
 
-import gifprime.lzw
 
-
-def DataSubBlocks(name):
+def _get_data_subblocks(name):
     """Return Adapter to parse GIF data sub-blocks."""
     return construct.ExprAdapter(
         construct.Struct(
@@ -67,7 +65,7 @@ _image_block = construct.Struct(
         ),
     ),
     construct.ULInt8('lzw_min'),
-    DataSubBlocks('compressed_indices'),
+    _get_data_subblocks('compressed_indices'),
 )
 
 
@@ -77,14 +75,14 @@ _application_extension = construct.Struct(
     construct.Const(construct.ULInt8('block_size'), 11),
     construct.String('app_id', 8),
     construct.Bytes('app_auth_code', 3),
-    DataSubBlocks('app_data'),
+    _get_data_subblocks('app_data'),
 )
 
 
 _comment_extension = construct.Struct(
     'comment_extension',
     construct.Value('block_type', lambda ctx: 'comment'),
-    DataSubBlocks('comment'),
+    _get_data_subblocks('comment'),
 )
 
 
@@ -107,7 +105,7 @@ _gce_extension = construct.Struct(
 _unknown_extension = construct.Struct(
     'unknown_extension',
     construct.Value('block_type', lambda ctx: 'unknown'),
-    DataSubBlocks('unknown_data'),
+    _get_data_subblocks('unknown_data'),
 )
 
 

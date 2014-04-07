@@ -1,10 +1,11 @@
+"""Tests for LZW compression and decompression."""
+
 import bitarray
 
 from gifprime import lzw
 
 
 def test_decompress_simple():
-    # TODO: fails
     assert ''.join(lzw.decompress('D\x01', 2)) == '\x00'
 
 
@@ -13,7 +14,6 @@ def test_compress_simple():
 
 
 def test_decompress_5pixels():
-    # TODO: fails with exception inside decompress (not completely sure what the result should be)
     assert ''.join(lzw.decompress('D\x1e\x05', 2)) == '\x00\x01\x01\x01\x01'
 
 

@@ -178,6 +178,7 @@ class GIFViewer(object):
                     self.is_showing_info = not self.is_showing_info
 
     def update_loading(self, elapsed):
+        """Update the loading screen."""
         self.loading_elapsed += elapsed
 
     def update(self, elapsed):

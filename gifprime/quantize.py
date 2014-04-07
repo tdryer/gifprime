@@ -4,8 +4,6 @@ Implemented as described by ImageMagick:
 http://www.imagemagick.org/script/quantize.php
 """
 
-import itertools
-
 
 # The maximum depth of the colour octree. Should be in range [3, 6]. Higher is
 # slower but with higher quality. Anything less than 8 will cause loss on

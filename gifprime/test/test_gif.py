@@ -140,6 +140,7 @@ def test_gif_encode(name):
     'quantize_withtransparent',
 ])
 def test_gif_quantization(name):
+    """Encode unquantized image and compare result to reference."""
     # load un-quantized PNG
     png_path = get_test_gif_path(name + '.png')
     rgba = run('convert {} rgba:-', png_path)

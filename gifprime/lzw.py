@@ -10,6 +10,10 @@ class LZWDecompressionTable(object):
 
     def __init__(self, lzw_min):
         self.lzw_min = lzw_min
+        self.codes = None
+        self.clear_code = None
+        self.end_code = None
+        self.next_code = None
         self.reinitialize()
 
     def reinitialize(self):
@@ -30,6 +34,7 @@ class LZWDecompressionTable(object):
         return key in self.codes
 
     def show(self):
+        """Print the code table."""
         for key in sorted(self.codes):
             print key, '|', repr(self.codes[key])
 
