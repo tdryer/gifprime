@@ -74,6 +74,14 @@ class GIF(object):
         res = requests.get(url, stream=True)
         if res.headers['content-type'] != 'image/gif':
             raise ValueError('Content type is not image/gif: {}'.format(url))
+
+        # XXX: Apparently reading 0 bytes causes some operating systems to
+        #      close the file descriptor. We are not sure why Construct ever
+        #      has to read 0 bytes but this monkey-patched socket prevents it
+        #      from doing this.
+        orig_read = res.raw.read
+        res.raw.read = lambda c: '' if not c else orig_read(c)
+
         return cls(res.raw, res.url.rsplit('/', 1)[-1], **kwargs)
 
     def __init__(self, stream=None, filename=None, force_deinterlace=None):
