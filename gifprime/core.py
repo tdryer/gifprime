@@ -97,6 +97,7 @@ class GIF(object):
         self.size = (0, 0)
         # number of times to show the animation, or 0 to loop forever
         self.loop_count = 1
+        self.is_loading = False
 
         if stream is not None:
             parsed_data = gifprime.parser.gif.parse_stream(stream)
@@ -239,6 +240,9 @@ class GIF(object):
                         print ('Found unknown extension block: {}'
                                .format(hex(block.ext_label)))
 
+                self.is_loading = False
+
+            self.is_loading = True
             num_images = len([block for block in parsed_data.body
                               if getattr(block, 'block_type', None) == 'image'])
             self.images = LazyList(generate_images(), num_images)

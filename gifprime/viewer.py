@@ -188,9 +188,10 @@ class GIFViewer(object):
                 self.show_next_frame(backwards=self.is_reversed)
 
         self.info_lines = [
-            '{} {} {}'.format('Playing' if self.is_playing else 'Paused',
-                              '(reversed)' if self.is_reversed else '',
-                              '(rescaled)' if self.is_scaled else ''),
+            '{} {} {} {}'.format('Playing' if self.is_playing else 'Paused',
+                                 '(loading)' if self.gif.is_loading else '',
+                                 '(reversed)' if self.is_reversed else '',
+                                 '(rescaled)' if self.is_scaled else ''),
             'size: {}x{}'.format(self.gif.size[0], self.gif.size[1]),
             'loop: {} / {}'.format(self.frames.loop_count + 1,
                                    self.gif.loop_count or 'infinite'),
