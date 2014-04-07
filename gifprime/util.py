@@ -42,7 +42,7 @@ class LazyList(object):
                 self._values.append(next(self._iterator))
 
             if len(self._values) == self._max_size:
-                self._consumed = True
+                self._consume_remaining()
 
             return self._values[index]
 
@@ -59,6 +59,10 @@ class LazyList(object):
     def _consume_remaining(self):
         self._consumed = True
         list(self)
+        try:
+            next(self._iterator)
+        except StopIteration:
+            pass
 
     def append(self, item):
         if not self._consumed:
