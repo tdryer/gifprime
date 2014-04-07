@@ -7,6 +7,7 @@ import struct
 
 import gifprime.parser
 from gifprime.quantize import quantize
+from gifprime.util import LazyList
 from gifprime import lzw
 
 
@@ -115,128 +116,133 @@ class GIF(object):
                 # XXX: this spec is not clear on what this should be
                 bg_colour = (0, 0, 0, 255)
 
-            # the most recent GCE block since the last image block.
-            active_gce = None
+            def generate_images():
+                # the most recent GCE block since the last image block.
+                active_gce = None
 
-            # initialize the previous state
-            prev_state = [bg_colour] * (self.size[0] * self.size[1])
+                # initialize the previous state
+                prev_state = [bg_colour] * (self.size[0] * self.size[1])
 
-            for block in parsed_data.body:
-                if 'block_type' not in block:  # it's just the terminator
-                    pass
-                elif block.block_type == 'image':
+                for block in parsed_data.body:
+                    if 'block_type' not in block:  # it's just the terminator
+                        pass
+                    elif block.block_type == 'image':
 
-                    lct = (block.lct if block.image_descriptor.lct_flag
-                           else None)
+                        lct = (block.lct if block.image_descriptor.lct_flag
+                               else None)
 
-                    # Select the active colour table.
-                    if lct is not None:
-                        active_colour_table = lct
-                    elif gct is not None:
-                        active_colour_table = gct
-                    else:
-                        raise NotImplementedError, (
-                            'TODO: supply a default colour table')
+                        # Select the active colour table.
+                        if lct is not None:
+                            active_colour_table = lct
+                        elif gct is not None:
+                            active_colour_table = gct
+                        else:
+                            raise NotImplementedError, (
+                                'TODO: supply a default colour table')
 
-                    # set transparency index
-                    if active_gce is not None:
-                        if active_gce.transparent_colour_flag:
-                            trans_index = active_gce.transparent_colour_index
+                        # set transparency index
+                        if active_gce is not None:
+                            if active_gce.transparent_colour_flag:
+                                trans_index = active_gce.transparent_colour_index
+                            else:
+                                trans_index = None
+                            delay_ms = active_gce.delay_time * 10
+                            disposal_method = active_gce.disposal_method
                         else:
                             trans_index = None
-                        delay_ms = active_gce.delay_time * 10
-                        disposal_method = active_gce.disposal_method
+                            delay_ms = 0
+                            disposal_method = 0
+
+                        # if not specified, deinterlace the images only if necessary
+                        if force_deinterlace is None:
+                            deinterlace = block.image_descriptor.interlace_flag
+                        else:
+                            deinterlace = force_deinterlace
+
+                        # get the decompressed colour indices
+                        indices_bytes = ''.join(lzw.decompress(
+                            block.compressed_indices, block.lzw_min))
+                        indices = struct.unpack('{}B'.format(len(indices_bytes)),
+                                                indices_bytes)
+
+                        # de-interlace the colour indices if necessary
+                        if deinterlace:
+                            indices = self._de_interlace(
+                                indices,
+                                block.image_descriptor.height,
+                                block.image_descriptor.width,
+                            )
+
+                        # interpret colour indices
+                        rgba_data = [
+                            tuple(active_colour_table[i]) +
+                            ((0,) if i == trans_index else (255,))
+                            for i in indices
+                        ]
+
+                        image_size = (block.image_descriptor.width,
+                                      block.image_descriptor.height)
+                        image_pos = (block.image_descriptor.left,
+                                     block.image_descriptor.top)
+
+                        new_state = blit_rgba(rgba_data, image_size, image_pos,
+                                              prev_state, self.size)
+
+                        if disposal_method in [0, 1]:
+                            # disposal method is unspecified or none
+                            # do not restore the previous frame in any way
+                            prev_state = new_state
+                        elif disposal_method == 2:
+                            # disposal method is background
+                            # restore the used area to the background colour
+                            fill_rgba = ([bg_colour] *
+                                         (image_size[0] * image_size[1]))
+                            prev_state = blit_rgba(fill_rgba, image_size,
+                                                   image_pos, new_state, self.size,
+                                                   transparency=False)
+                        elif disposal_method == 3:
+                            # disposal method is previous
+                            # restore to previous frame after drawing on it
+                            pass # prev_state is unchanged
+                        else:
+                            raise ValueError('Unknown disposal method: {}'
+                                             .format(disposal_method))
+
+                        yield Image(new_state, image_size, delay_ms)
+
+                        # the GCE goes out of scope after being used once
+                        active_gce = None
+
+                    elif block.block_type == 'gce':
+                        active_gce = block
+                    elif block.block_type == 'comment':
+                        # If there are multiple comment blocks, we ignore all but
+                        # the last (this is unspecified behaviour).
+                        self.comment = block.comment
+                    elif block.block_type == 'application':
+                        if (block.app_id == 'NETSCAPE' and
+                            block.app_auth_code == '2.0'):
+                            contents = construct.Struct(
+                                'loop',
+                                construct.ULInt8('id'),
+                                construct.ULInt16('count'),
+                            ).parse(block.app_data)
+                            assert contents.id == 1, 'Unknown NETSCAPE extension'
+                            self.loop_count = (contents.count + 1
+                                               if contents.count != 0 else 0)
+                        else:
+                            print ('Found unknown app extension: {}'
+                                   .format((block.app_id, block.app_auth_code)))
                     else:
-                        trans_index = None
-                        delay_ms = 0
-                        disposal_method = 0
+                        print ('Found unknown extension block: {}'
+                               .format(hex(block.ext_label)))
 
-                    # if not specified, deinterlace the images only if necessary
-                    if force_deinterlace is None:
-                        deinterlace = block.image_descriptor.interlace_flag
-                    else:
-                        deinterlace = force_deinterlace
-
-                    # get the decompressed colour indices
-                    indices_bytes = ''.join(lzw.decompress(
-                        block.compressed_indices, block.lzw_min))
-                    indices = struct.unpack('{}B'.format(len(indices_bytes)),
-                                            indices_bytes)
-
-                    # de-interlace the colour indices if necessary
-                    if deinterlace:
-                        indices = self._de_interlace(
-                            indices,
-                            block.image_descriptor.height,
-                            block.image_descriptor.width,
-                        )
-
-                    # interpret colour indices
-                    rgba_data = [
-                        tuple(active_colour_table[i]) +
-                        ((0,) if i == trans_index else (255,))
-                        for i in indices
-                    ]
-
-                    image_size = (block.image_descriptor.width,
-                                  block.image_descriptor.height)
-                    image_pos = (block.image_descriptor.left,
-                                 block.image_descriptor.top)
-
-                    new_state = blit_rgba(rgba_data, image_size, image_pos,
-                                          prev_state, self.size)
-
-                    if disposal_method in [0, 1]:
-                        # disposal method is unspecified or none
-                        # do not restore the previous frame in any way
-                        prev_state = new_state
-                    elif disposal_method == 2:
-                        # disposal method is background
-                        # restore the used area to the background colour
-                        fill_rgba = ([bg_colour] *
-                                     (image_size[0] * image_size[1]))
-                        prev_state = blit_rgba(fill_rgba, image_size,
-                                               image_pos, new_state, self.size,
-                                               transparency=False)
-                    elif disposal_method == 3:
-                        # disposal method is previous
-                        # restore to previous frame after drawing on it
-                        pass # prev_state is unchanged
-                    else:
-                        raise ValueError('Unknown disposal method: {}'
-                                         .format(disposal_method))
-
-                    self.images.append(Image(new_state, image_size, delay_ms))
-
-                    # the GCE goes out of scope after being used once
-                    active_gce = None
-
-                elif block.block_type == 'gce':
-                    active_gce = block
-                elif block.block_type == 'comment':
-                    # If there are multiple comment blocks, we ignore all but
-                    # the last (this is unspecified behaviour).
-                    self.comment = block.comment
-                elif block.block_type == 'application':
-                    if (block.app_id == 'NETSCAPE' and
-                        block.app_auth_code == '2.0'):
-                        contents = construct.Struct(
-                            'loop',
-                            construct.ULInt8('id'),
-                            construct.ULInt16('count'),
-                        ).parse(block.app_data)
-                        assert contents.id == 1, 'Unknown NETSCAPE extension'
-                        self.loop_count = (contents.count + 1
-                                           if contents.count != 0 else 0)
-                    else:
-                        print ('Found unknown app extension: {}'
-                               .format((block.app_id, block.app_auth_code)))
-                else:
-                    print ('Found unknown extension block: {}'
-                           .format(hex(block.ext_label)))
+            num_images = len([block for block in parsed_data.body
+                              if getattr(block, 'block_type', None) == 'image'])
+            self.images = LazyList(generate_images(), num_images)
 
         self.compressed_size = stream.tell() if stream is not None else 0
-        self.uncompressed_size = sum(len(i.rgba_data) for i in self.images)
+        self.uncompressed_size = 1.0
 
     @staticmethod
     def _de_interlace(indices, height, width):
