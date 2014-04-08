@@ -4,6 +4,7 @@ from PIL import Image as PILImage
 from argparse import ArgumentParser
 from contextlib import contextmanager
 import itertools
+import logging
 import os
 import praw
 import random
@@ -13,6 +14,14 @@ import time
 from gifprime.core import GIF, Image
 from gifprime.util import readable_size
 from gifprime.viewer import GIFViewer
+
+LOG_LEVELS = {
+    'info': logging.INFO,
+    'debug': logging.DEBUG,
+    'none': logging.CRITICAL,
+}
+
+logger = logging.getLogger(__name__)
 
 
 @contextmanager
@@ -37,6 +46,7 @@ def parse_args():
         '--time', '-t', help='report encoding and decoding times',
         default=False, action='store_true'
     )
+    parser.add_argument('--log-level', default='none', choices=LOG_LEVELS)
     subparser = parser.add_subparsers()
 
     # Encoder
@@ -151,6 +161,9 @@ def print_exceptions(func):
 def main():
     """Main entry point."""
     args = parse_args()
+
+    # Setup logging
+    logging.basicConfig(level=LOG_LEVELS[args.log_level])
 
     # get a function that returns a gif
     if args.command == 'encode':
