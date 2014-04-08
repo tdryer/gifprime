@@ -158,6 +158,7 @@ def main():
 
     # Setup logging
     logging.basicConfig(level=LOG_LEVELS[args.log_level])
+    logging.getLogger('requests').propagate = False
 
     # get a function that returns a gif
     if args.command == 'encode':
