@@ -25,28 +25,23 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def measure_time(label, print_output):
+def measure_time(label):
     """Context manager for measuring execution time."""
-    if print_output:
-        print 'starting {}...'.format(label)
+    logger.debug('starting %s...', label)
     start_sec = time.time()
     start_clock = time.clock()
     yield
     elapsed_sec = time.time() - start_sec
     elapsed_clock = time.clock() - start_clock
-    if print_output:
-        print ('... {} complete: {:.3f} seconds, {:.3f} cpu time'
-               .format(label, elapsed_sec, elapsed_clock))
+    logger.debug('... %s complete: %.3f seconds, %.3f cpu time',
+                 label, elapsed_sec, elapsed_clock)
 
 
 def parse_args():
     """Parse arguments and start the program."""
     parser = ArgumentParser('gifprime')
-    parser.add_argument(
-        '--time', '-t', help='report encoding and decoding times',
-        default=False, action='store_true'
-    )
-    parser.add_argument('--log-level', default='none', choices=LOG_LEVELS)
+    parser.add_argument('--log-level', default='none', choices=LOG_LEVELS,
+                        help='logging level')
     subparser = parser.add_subparsers()
 
     # Encoder
@@ -93,18 +88,17 @@ def run_encoder(args):
     gif.loop_count = args.loop_count
 
     with open(args.output, 'wb') as file_:
-        with measure_time('encode', args.time):
+        with measure_time('encode'):
             gif.save(file_)
 
-    return decode(args.output, benchmark=args.time)
+    return decode(args.output)
 
 
 def run_decoder(args):
     """Decode GIF by opening it with the viewer."""
     force_deinterlace = (None if args.deinterlace == 'auto'
                          else args.deinterlace == 'on')
-    return decode(args.filename, benchmark=args.time,
-                  force_deinterlace=force_deinterlace)
+    return decode(args.filename, force_deinterlace=force_deinterlace)
 
 
 def run_reddit(args):
@@ -127,13 +121,13 @@ def run_reddit(args):
             print 'Found one! "{}", {} - {}'.format(post.title,
                                                     readable_size(num_bytes),
                                                     post.url)
-            return decode(post.url, benchmark=args.time)
+            return decode(post.url)
     raise ValueError('Unable to find GIF on reddit')
 
 
 def decode(uri, benchmark=False, force_deinterlace=None):
     """Given a URI, return a GIF."""
-    with measure_time('decode', benchmark):
+    with measure_time('decode'):
         if uri.startswith('http'):
             return GIF.from_url(uri, force_deinterlace=force_deinterlace)
         elif os.path.isfile(uri):
