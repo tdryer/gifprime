@@ -3,14 +3,16 @@
 from math import log, ceil
 import construct
 import itertools
+import logging
 import requests
 import struct
-
 
 import gifprime.parser
 from gifprime.quantize import quantize
 from gifprime.util import LazyList
 from gifprime import lzw
+
+logger = logging.getLogger(__name__)
 
 
 def flatten(lst):
@@ -102,7 +104,11 @@ class GIF(object):
         self.is_loading = False
 
         if stream is not None:
+            logger.info('GIF<%s>: Started parsing input stream', self.filename)
             parsed_data = gifprime.parser.gif.parse_stream(stream)
+            logger.info('GIF<%s>: Finished parsing input stream',
+                        self.filename)
+
             lsd = parsed_data.logical_screen_descriptor
             self.size = (lsd.logical_width, lsd.logical_height)
 
@@ -125,6 +131,8 @@ class GIF(object):
 
                 # initialize the previous state
                 prev_state = [bg_colour] * (self.size[0] * self.size[1])
+
+                num_images = 0
 
                 for block in parsed_data.body:
                     if 'block_type' not in block:  # it's just the terminator
@@ -219,6 +227,11 @@ class GIF(object):
 
                         image = Image(new_state, image_size, delay_ms)
                         self.uncompressed_size += image_size[0] * image_size[1]
+
+                        num_images += 1
+                        logger.info('GIF<%s>: Decoded frame %d', self.filename,
+                                    num_images)
+
                         yield image
 
                         # the GCE goes out of scope after being used once
