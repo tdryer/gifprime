@@ -118,9 +118,10 @@ def run_reddit(args):
         if (response.status_code == 200
                 and response.headers['content-type'] == 'image/gif'):
             num_bytes = int(response.headers['content-length'])
-            print 'Found one! "{}", {} - {}'.format(post.title,
-                                                    readable_size(num_bytes),
-                                                    post.url)
+            logger.info('Found GIF: "%s" - %s - %s',
+                        post.title,
+                        readable_size(num_bytes),
+                        post.url)
             return decode(post.url)
     raise ValueError('Unable to find GIF on reddit')
 
