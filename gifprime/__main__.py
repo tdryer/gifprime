@@ -158,7 +158,8 @@ def main():
     args = parse_args()
 
     # Setup logging
-    logging.basicConfig(level=LOG_LEVELS[args.log_level])
+    logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s',
+                        level=LOG_LEVELS[args.log_level])
     logging.getLogger('requests').propagate = False
 
     # get a function that returns a gif
