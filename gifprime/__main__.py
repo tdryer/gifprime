@@ -148,7 +148,7 @@ def print_exceptions(func):
             return func()
         except Exception as e:
             import traceback, sys
-            print "".join(traceback.format_exception(*sys.exc_info()))
+            logger.error("".join(traceback.format_exception(*sys.exc_info())))
             raise e
     return wrapped_func
 
