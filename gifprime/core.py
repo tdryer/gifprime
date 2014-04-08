@@ -259,14 +259,16 @@ class GIF(object):
                                     else 0
                                 )
                             else:
-                                print ('Found unknown NETSCAPE extension id: {}'
-                                       .format(contents.id))
+                                logger.debug(
+                                    'Found unknown NETSCAPE extension id: %s',
+                                    contents.id,
+                                )
                         else:
-                            print ('Found unknown app extension: {}'
-                                   .format((block.app_id, block.app_auth_code)))
+                            logger.debug('Found unknown app extension: %s',
+                                         (block.app_id, block.app_auth_code))
                     else:
-                        print ('Found unknown extension block: {}'
-                               .format(hex(block.ext_label)))
+                        logger.debug('Found unknown extension block: %s',
+                                     hex(block.ext_label))
 
                 self.is_loading = False
                 logger.info('GIF<%s>: Finished decoding image frames',
