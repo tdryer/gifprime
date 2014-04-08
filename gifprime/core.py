@@ -133,6 +133,8 @@ class GIF(object):
                 prev_state = [bg_colour] * (self.size[0] * self.size[1])
 
                 num_images = 0
+                logger.info('GIF<%s>: Started decoding image frames',
+                            self.filename)
 
                 for block in parsed_data.body:
                     if 'block_type' not in block:  # it's just the terminator
@@ -229,8 +231,8 @@ class GIF(object):
                         self.uncompressed_size += image_size[0] * image_size[1]
 
                         num_images += 1
-                        logger.info('GIF<%s>: Decoded frame %d', self.filename,
-                                    num_images)
+                        logger.debug('GIF<%s>: Decoded frame %d',
+                                     self.filename, num_images)
 
                         yield image
 
@@ -267,6 +269,8 @@ class GIF(object):
                                .format(hex(block.ext_label)))
 
                 self.is_loading = False
+                logger.info('GIF<%s>: Finished decoding image frames',
+                            self.filename)
 
             self.is_loading = True
             num_images = len([block for block in parsed_data.body
