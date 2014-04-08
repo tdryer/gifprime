@@ -206,6 +206,13 @@ class GIFViewer(object):
             ),
         ]
 
+        # Display comments if they exist
+        if self.gif.comment:
+            lines = self.gif.comment.splitlines()
+            self.info_lines.append('comment: {}'.format(lines[0].strip()))
+            self.info_lines += ['{} {}'.format(' ' * 8, line.strip())
+                                for line in lines[1:]]
+
     def draw_loading(self):
         """Draw the loading screen."""
         self.screen.fill((220, 220, 220))
@@ -275,7 +282,7 @@ class GIFViewer(object):
             left = 5
             current_y = 5
             for line in self.info_lines:
-                font_surface = self.font.render(line.strip(), True, (0, 0, 0),
+                font_surface = self.font.render(line.rstrip(), True, (0, 0, 0),
                                                 (255, 255, 255))
                 font_surface.set_alpha(200)
                 self.screen.blit(font_surface, (left, current_y))
