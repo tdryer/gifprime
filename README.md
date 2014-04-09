@@ -23,6 +23,14 @@ Usage information:
 python -m gifprime -h
 ```
 
+Viewer controls:
+* `q`: quit
+* `s`: toggle scaling
+* `i`: toggle info overlay
+* `space`: toggle animation playback
+* `r`: toggle forward/reverse playback
+* `left/right arrow`: go back/forward one frame
+
 Test:
 ```
 py.test
