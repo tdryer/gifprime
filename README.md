@@ -3,6 +3,8 @@ gifprime
 
 GIF codec in Python
 
+![screenshot](screenshot.png)
+
 Dependencies:
 ```
 pip install -r requirements.txt
