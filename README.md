@@ -1,7 +1,7 @@
 gifprime
 ========
 
-GIF codec in Python
+GIF image decoder, encoder, and playback GUI in Python
 
 ![screenshot](screenshot.png)
 
